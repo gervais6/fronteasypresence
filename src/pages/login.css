@@ -1,0 +1,26 @@
+.gradient-custom-2 {
+    background-color: #9A616D; /* Couleur de fond unie */
+}
+
+@media (min-width: 768px) {
+    .gradient-form {
+        height:100vh !important;
+    }
+}
+
+@media (min-width: 769px) {
+    .gradient-custom-2 {
+        border-top-right-radius: .3rem;
+        border-bottom-right-radius: .3rem;
+    }
+}
+
+body {
+    font-family: 'Poppins', sans-serif; /* Utiliser la police Poppins */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif; /* Appliquer Poppins aux titres */
+}
+
+/* Ajoutez d'autres styles selon vos besoins */
