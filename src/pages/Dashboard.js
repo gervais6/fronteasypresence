@@ -175,7 +175,7 @@ const Dashboard = () => {
   // --- Récupération de l'historique d'un membre ---
   const fetchHistorique = async (id, contact) => {
     try {
-      const res = await axios.get(`https://vlr-21c2.onrender.com/api/membres/historique/${id}`);
+      const res = await axios.get(`https://backendeasypresence.onrender.com/api/membres/historique/${id}`);
       setSelectedHistory(res.data.history || []);
       setSelectedContactHistory(contact);
       setHistoryModalOpen(true);
@@ -196,7 +196,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchContacts = async () => {
       try {
-        const res = await axios.get('https://vlr-21c2.onrender.com/api/membres');
+        const res = await axios.get('https://backendeasypresence.onrender.com/api/membres');
         setContacts(res.data);
         resetDailyPresence();
       } catch (err) {
@@ -210,10 +210,10 @@ const Dashboard = () => {
   const handleSaveNewEntry = async (newEntry) => {
     try {
       if (newEntry._id) {
-        await axios.put(`https://vlr-21c2.onrender.com/api/membres/${newEntry._id}`, newEntry);
+        await axios.put(`https://backendeasypresence.onrender.com/api/membres/${newEntry._id}`, newEntry);
         setContacts(prev => prev.map(c => c._id === newEntry._id ? newEntry : c));
       } else {
-        const res = await axios.post('https://vlr-21c2.onrender.com/api/membres', newEntry);
+        const res = await axios.post('https://backendeasypresence.onrender.com/api/membres', newEntry);
         setContacts(prev => [...prev, res.data]);
       }
       toast.success("Membre ajouté / modifié !");
@@ -222,7 +222,7 @@ const Dashboard = () => {
 
   const handleDeleteMember = async (id) => {
     try {
-      await axios.delete(`https://vlr-21c2.onrender.com/api/membres/${id}`);
+      await axios.delete(`https://backendeasypresence.onrender.com/api/membres/${id}`);
       setContacts(prev => prev.filter(c => c._id !== id));
       toast.success("Membre supprimé !");
     } catch { toast.error("Erreur serveur !"); }
@@ -234,7 +234,7 @@ const Dashboard = () => {
       const data = JSON.parse(decodedText);
       const contactId = data.id;
 
-      const res = await axios.post('https://vlr-21c2.onrender.com/api/scan', { id: contactId });
+      const res = await axios.post('https://backendeasypresence.onrender.com/api/scan', { id: contactId });
       setContacts(prev => prev.map(c => c._id === contactId ? res.data : c));
 
       toast.success("Présence mise à jour !");
