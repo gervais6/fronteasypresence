@@ -253,16 +253,26 @@ const Dashboard = () => {
       <ToastContainer />
       <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`} style={{ borderRadius: 0 }}>
         {/* Header */}
-        <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', backgroundColor: '#4A2C2A', color: 'white', gap: 10 }}>
-          <h1 style={{ marginRight: 250 }}></h1>
-          <div style={{ flex: '1 1 300px', minWidth: 200 }}>
-            <TextField placeholder="Rechercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} variant="outlined" size="small" fullWidth style={{ backgroundColor: 'white', borderRadius: 5 }} />
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Button variant="contained" style={{ backgroundColor: '#9A616D', color: 'white' }} onClick={() => { setSelectedContact(null); setNewEntryModalOpen(true); }} startIcon={<AddIcon />}>Nouveau</Button>
-            <Button variant="contained" style={{ backgroundColor: '#9A616D', color: 'white' }} onClick={() => setScannerOpen(true)}>Scanner QR</Button>
-          </div>
-        </header>
+      <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', backgroundColor: '#4A2C2A', color: 'white', gap: 10 }}>
+  <h1 style={{ marginRight: 20 }}></h1>
+  <div style={{ flex: '0 1 200px', minWidth: 150, maxWidth: 250 }}>
+    <TextField
+      placeholder="Rechercher..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      variant="outlined"
+      size="small"
+      fullWidth
+      style={{ backgroundColor: 'white', borderRadius: 5 }}
+    />
+  </div>
+  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+    <Button variant="contained" style={{ backgroundColor: '#9A616D', color: 'white' }} onClick={() => setScannerOpen(true)}>
+      Scanner QR
+    </Button>
+  </div>
+</header>
+
 
         {/* Sidebar */}
         <aside style={{
