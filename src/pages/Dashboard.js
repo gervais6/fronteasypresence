@@ -15,6 +15,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import { jsPDF } from "jspdf";
 import { Html5Qrcode } from "html5-qrcode";
 import 'react-toastify/dist/ReactToastify.css';
+import HistoryIcon from '@mui/icons-material/History';
 
 // ------------------ Export PDF ------------------
 const exportQrToPdf = async (contact) => {
@@ -305,42 +306,111 @@ const Dashboard = () => {
         </aside>
 
         {/* Main Content */}
-        <main style={{ marginLeft: isSidebarOpen ? 200 : 60, padding: 20, transition: 'margin-left 0.3s', overflowX: 'auto' }}>
-          <Fab onClick={() => { setSelectedContact(null); setNewEntryModalOpen(true); }} style={{ position: 'fixed', bottom: 20, right: 20 }} color="primary">
-            <AddIcon />
-          </Fab>
+      <main 
+  style={{ 
+    marginLeft: isSidebarOpen ? 200 : 60, 
+    padding: 20, 
+    transition: 'margin-left 0.3s' 
+  }}
+>
+  <Fab 
+    onClick={() => { setSelectedContact(null); setNewEntryModalOpen(true); }} 
+    style={{ position: 'fixed', bottom: 20, right: 20, zIndex: 1000 }} 
+    color="primary"
+  >
+    <AddIcon />
+  </Fab>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
-            <thead>
-              <tr>
-                <th>Nom</th><th>Position</th><th>Numéro</th><th>QG</th><th>Date</th><th>Statut</th><th>QR Code</th><th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredContacts.map(contact => (
-                <tr key={contact._id} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td>{contact.name}</td>
-                  <td>{contact.position}</td>
-                  <td>{contact.number}</td>
-                  <td>{contact.qg}</td>
-                  <td>{contact.day || "-"}</td>
-                  <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: 12, color: 'white', fontWeight: 'bold', fontSize: 12, backgroundColor: contact.present ? '#16a34a' : '#dc2626', minWidth: 70, gap: 5 }}>
-                      {contact.present ? '✅ Présent' : '❌ Absent'}
-                    </span>
-                  </td>
-                  <td><div id={`qr-${contact._id}`}><QRCodeSVG value={JSON.stringify({ id: contact._id, name: contact.name })} size={70} /></div></td>
-                  <td>
-                    <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }}><EditIcon /></IconButton>
-                    <IconButton onClick={() => handleDeleteMember(contact._id)}><DeleteIcon /></IconButton>
-                    <IconButton onClick={() => exportQrToPdf(contact)}><PictureAsPdfIcon /></IconButton>
-                    <IconButton onClick={() => fetchHistorique(contact._id, contact)} title="Historique">📜</IconButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </main>
+  {/* Table en version desktop */}
+  <div className="table-container">
+    <table className="contact-table">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Position</th>
+          <th>Numéro</th>
+          <th>QG</th>
+          <th>Date</th>
+          <th>Statut</th>
+          <th>QR Code</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredContacts.map(contact => (
+          <tr key={contact._id}>
+            <td>{contact.name}</td>
+            <td>{contact.position}</td>
+            <td>{contact.number}</td>
+            <td>{contact.qg}</td>
+            <td>{contact.day || "-"}</td>
+            <td>
+              <span className={`status ${contact.present ? 'present' : 'absent'}`}>
+                {contact.present ? '✅ Présent' : '❌ Absent'}
+              </span>
+            </td>
+            <td>
+              <div id={`qr-${contact._id}`}>
+                <QRCodeSVG 
+                  value={JSON.stringify({ id: contact._id, name: contact.name })} 
+                  size={50} 
+                />
+              </div>
+            </td>
+            <td className="actions">
+              <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }}>
+                <EditIcon />
+              </IconButton>
+              <IconButton onClick={() => handleDeleteMember(contact._id)}>
+                <DeleteIcon />
+              </IconButton>
+              <IconButton onClick={() => exportQrToPdf(contact)}>
+                <PictureAsPdfIcon />
+              </IconButton>
+                    <IconButton onClick={() => fetchHistorique(contact._id, contact)} title="Historique">
+  <HistoryIcon />
+</IconButton>
+
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Vue mobile en cartes */}
+  <div className="card-container">
+    {filteredContacts.map(contact => (
+      <div key={contact._id} className="contact-card">
+        <h3>{contact.name}</h3>
+        <p><b>Position:</b> {contact.position}</p>
+        <p><b>Numéro:</b> {contact.number}</p>
+        <p><b>QG:</b> {contact.qg}</p>
+        <p><b>Date:</b> {contact.day || "-"}</p>
+        <p className={`status ${contact.present ? 'present' : 'absent'}`}>
+          {contact.present ? '✅ Présent' : '❌ Absent'}
+        </p>
+        <div className="qr-mini">
+          <QRCodeSVG value={JSON.stringify({ id: contact._id, name: contact.name })} size={60} />
+        </div>
+        <div className="card-actions">
+          <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }}>
+            <EditIcon />
+          </IconButton>
+          <IconButton onClick={() => handleDeleteMember(contact._id)}>
+            <DeleteIcon />
+          </IconButton>
+          <IconButton onClick={() => exportQrToPdf(contact)}>
+            <PictureAsPdfIcon />
+          </IconButton>
+        <IconButton onClick={() => fetchHistorique(contact._id, contact)} title="Historique">
+  <HistoryIcon />
+</IconButton>
+        </div>
+      </div>
+    ))}
+  </div>
+</main>
 
         {/* Modal Historique */}
         <Dialog
