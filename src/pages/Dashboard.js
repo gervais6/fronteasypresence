@@ -583,7 +583,6 @@ const handleScanSuccess = (decodedText) => {
           </ul>
         </aside>
 
-        {/* Main */}
 <main
   style={{
     marginLeft: isSidebarOpen ? 220 : 70,
@@ -597,19 +596,25 @@ const handleScanSuccess = (decodedText) => {
   }}
 >
   {/* Table */}
-  <TableContainer component={Paper} style={{
-    width: '100%',
-    maxWidth: '100%',
-    overflowX: 'auto',
-    borderRadius: 12,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-    backgroundColor: '#fff',
-  }}>
+  <TableContainer
+    component={Paper}
+    style={{
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'auto',
+      borderRadius: 12,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+      backgroundColor: '#fff',
+    }}
+  >
     <Table stickyHeader size="medium">
       <TableHead>
         <TableRow style={{ backgroundColor: '#f3f4f6' }}>
-          {['Nom', 'Position', 'Numéro', 'QG', 'QR', 'Statut', 'Actions'].map(title => (
-            <TableCell key={title} style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}>
+          {['Nom', 'Position', 'Numéro', 'QG', 'QR', 'Statut', 'Actions'].map((title) => (
+            <TableCell
+              key={title}
+              style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}
+            >
               {title}
             </TableCell>
           ))}
@@ -617,56 +622,102 @@ const handleScanSuccess = (decodedText) => {
       </TableHead>
 
       <TableBody>
-        {displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(contact => (
-          <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
-            <TableCell>{contact.name}</TableCell>
-            <TableCell>{contact.position}</TableCell>
-            <TableCell>{contact.number}</TableCell>
-            <TableCell style={{ fontStyle: 'italic' }}>{contact.qg}</TableCell>
-            <TableCell style={{ textAlign: 'center' }}>
-              <QRCodeSVG value={contact._id} size={50} />
-            </TableCell>
-            <TableCell style={{
-              color: contact.presentToday ? '#16a34a' : '#dc2626',
-              fontWeight: 'bold',
-              textAlign: 'center'
-            }}>
-              {contact.presentToday ? 'Présent' : 'Absent'}
-            </TableCell>
-            <TableCell>
-              <div style={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'center', gap: 6, overflowX: 'auto' }}>
-                <Tooltip title="Modifier">
-                  <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small"><EditIcon fontSize="small" /></IconButton>
-                </Tooltip>
+        {displayContacts
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((contact) => (
+            <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
+              <TableCell>{contact.name}</TableCell>
+              <TableCell>{contact.position}</TableCell>
+              <TableCell>{contact.number}</TableCell>
+              <TableCell style={{ fontStyle: 'italic' }}>{contact.qg}</TableCell>
+              <TableCell style={{ textAlign: 'center' }}>
+                <div id={`qr-${contact._id}`}>
+                  <QRCodeSVG value={contact._id} size={50} />
+                </div>
+              </TableCell>
+              <TableCell
+                style={{
+                  color: contact.presentToday ? '#16a34a' : '#dc2626',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                }}
+              >
+                {contact.presentToday ? 'Présent' : 'Absent'}
+              </TableCell>
+              <TableCell>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'nowrap',
+                    justifyContent: 'center',
+                    gap: 6,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <Tooltip title="Modifier">
+                    <IconButton
+                      onClick={() => {
+                        setSelectedContact(contact);
+                        setNewEntryModalOpen(true);
+                      }}
+                      size="small"
+                    >
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                <Tooltip title="Supprimer">
-                  <IconButton onClick={() => handleDeleteMember(contact._id)} size="small"><DeleteIcon fontSize="small" /></IconButton>
-                </Tooltip>
+                  <Tooltip title="Supprimer">
+                    <IconButton
+                      onClick={() => handleDeleteMember(contact._id)}
+                      size="small"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                <Tooltip title="Exporter PDF">
-                  <IconButton onClick={() => exportQrToPdf(contact)} size="small"><PictureAsPdfIcon fontSize="small" /></IconButton>
-                </Tooltip>
+                  <Tooltip title="Exporter PDF">
+                    <IconButton
+                      onClick={() => exportQrToPdf(contact)}
+                      size="small"
+                    >
+                      <PictureAsPdfIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                <Tooltip title="Historique">
-                  <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small"><HistoryIcon fontSize="small" /></IconButton>
-                </Tooltip>
+                  <Tooltip title="Historique">
+                    <IconButton
+                      onClick={() => {
+                        setSelectedContactHistory(contact);
+                        setHistoryModalOpen(true);
+                      }}
+                      size="small"
+                    >
+                      <HistoryIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-                <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
-                  <IconButton
-                    onClick={() => handleTogglePresence(contact._id)}
-                    size="small"
-                    style={{
-                      backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
-                      color: "white",
-                    }}
+                  <Tooltip
+                    title={contact.presentToday ? 'Marquer Absent' : 'Marquer Présent'}
                   >
-                    {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-                  </IconButton>
-                </Tooltip>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
+                    <IconButton
+                      onClick={() => handleTogglePresence(contact._id)}
+                      size="small"
+                      style={{
+                        backgroundColor: contact.presentToday ? '#dc2626' : '#16a34a',
+                        color: 'white',
+                      }}
+                    >
+                      {contact.presentToday ? (
+                        <CloseIcon fontSize="small" />
+                      ) : (
+                        <CheckIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
       </TableBody>
     </Table>
 
@@ -677,61 +728,68 @@ const handleScanSuccess = (decodedText) => {
       rowsPerPage={rowsPerPage}
       page={page}
       onPageChange={(e, newPage) => setPage(newPage)}
-      onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+      onRowsPerPageChange={(e) => {
+        setRowsPerPage(parseInt(e.target.value, 10));
+        setPage(0);
+      }}
       size="small"
     />
   </TableContainer>
 
-{window.innerWidth <= 600 && (
-  <div style={{
-    position: 'fixed',
-    bottom: 20,
-    right: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-    zIndex: 2000,
-  }}>
-    <Tooltip title="Ajouter">
-      <IconButton
-        onClick={() => setNewEntryModalOpen(true)}
-        style={{
-          backgroundColor: '#4A2C2A',
-          color: 'white',
-          width: 56,
-          height: 56,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}
-      >
-        <AddIcon />
-      </IconButton>
-    </Tooltip>
+  {/* Boutons flottants pour mobile uniquement */}
+  {window.innerWidth <= 600 && (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 20,
+        right: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        zIndex: 2000,
+      }}
+    >
+      <Tooltip title="Ajouter">
+        <IconButton
+          onClick={() => setNewEntryModalOpen(true)}
+          style={{
+            backgroundColor: '#4A2C2A',
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+        >
+          <AddIcon />
+        </IconButton>
+      </Tooltip>
 
-    <Tooltip title="Scanner">
-      <IconButton
-        onClick={() => setScannerOpen(true)}
-        style={{
-          backgroundColor: '#9A616D',
-          color: 'white',
-          width: 56,
-          height: 56,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}
-      >
-        <QrCodeScannerIcon />
-      </IconButton>
-    </Tooltip>
-  </div>
-)}
-<style>{`
+      <Tooltip title="Scanner">
+        <IconButton
+          onClick={() => setScannerOpen(true)}
+          style={{
+            backgroundColor: '#9A616D',
+            color: 'white',
+            width: 56,
+            height: 56,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}
+        >
+          <QrCodeScannerIcon />
+        </IconButton>
+      </Tooltip>
+    </div>
+  )}
+
+  <style>{`
     @media (max-width: 600px) {
       main {
-        margin-top: 5px !important; /* supprime la marge du header */
+        margin-top: 5px !important; /* supprime la marge du header sur mobile */
       }
-    
+    }
   `}</style>
-
 </main>
+
 
 
 
