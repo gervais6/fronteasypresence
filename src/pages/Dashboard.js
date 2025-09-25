@@ -331,44 +331,55 @@ const handleTogglePresence = (id) => {
 
   // Scan QR
   // Scan QR
+
 const handleScanSuccess = (decodedText) => {
   const memberId = decodedText;
-  const member = contacts.find(c => c._id === memberId);
 
-  if (!member) return;
+  const updated = contacts.map(c => {
+    if (c._id === memberId) {
+      const todayEntryIndex = c.history?.findIndex(h => h.date === today);
+      let updatedHistory;
 
-  const todayEntry = member.history?.find(h => h.date === today);
+      if (todayEntryIndex >= 0) {
+        // ✅ Toggle présence
+        updatedHistory = [...c.history];
+        updatedHistory[todayEntryIndex].present = !updatedHistory[todayEntryIndex].present;
+      } else {
+        // ✅ Si pas encore scanné aujourd'hui → on marque Présent
+        updatedHistory = c.history
+          ? [...c.history, { date: today, present: true }]
+          : [{ date: today, present: true }];
+      }
 
-  if (todayEntry?.present) {
-    // Toast pour signaler que la personne est déjà présente
-    toast.info(`${member.name} est déjà présent aujourd'hui !`);
-    // Vibration courte pour retour d'information
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    return; // on ne modifie rien
-  }
+      return { ...c, history: updatedHistory };
+    }
+    return c;
+  });
 
-  // Sinon, on marque comme présent
-  const updatedHistory = todayEntry
-    ? member.history.map(h => h.date === today ? { ...h, present: true } : h)
-    : [...(member.history || []), { date: today, present: true }];
+  setContacts(updated);
+  localStorage.setItem("contacts", JSON.stringify(updated));
 
-  const updatedContacts = contacts.map(c => 
-    c._id === memberId ? { ...c, history: updatedHistory } : c
-  );
+  const updatedMember = updated.find(c => c._id === memberId);
 
-  setContacts(updatedContacts);
-  localStorage.setItem("contacts", JSON.stringify(updatedContacts));
-
-  // Toast succès et vibration
-  toast.success(`Présence enregistrée pour ${member.name}`);
-  if (navigator.vibrate) navigator.vibrate(200);
-
-  const updatedMember = updatedContacts.find(c => c._id === memberId);
   if (navigator.onLine) {
     axios.put(`${API_URL}/${memberId}`, updatedMember)
       .catch(() => savePendingAction({ type: "update", data: updatedMember }));
   } else {
     savePendingAction({ type: "update", data: updatedMember });
+  }
+
+  // ✅ Feedback sonore + vibration
+  const beepSound = new Audio("/beep.mp3");
+  beepSound.currentTime = 0;
+  beepSound.play().catch(() => {});
+  if (navigator.vibrate) navigator.vibrate(200);
+
+  // ✅ Message différent selon l’état
+  const todayEntry = updatedMember.history.find(h => h.date === today);
+  if (todayEntry?.present) {
+    toast.success(`${updatedMember.name} marqué Présent`);
+  } else {
+    toast.error(`${updatedMember.name} marqué Absent`);
   }
 };
 
