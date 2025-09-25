@@ -523,12 +523,13 @@ const handleScanSuccess = (decodedText) => {
     </aside>
 
         {/* Main */}
-   <main style={{
+{/* Main */}
+<main style={{
   marginLeft: isSidebarOpen ? 220 : 70, // largeur sidebar + un petit padding
   padding: 20,
   transition: 'margin-left 0.3s ease',
   minHeight: '100vh', // pour que le main occupe toute la hauteur
-  backgroundColor: '#f9f9f9', // optionnel : contraste avec sidebar
+  backgroundColor: '#f9f9f9', // contraste avec sidebar
 }}>
   <h1 style={{ marginBottom: 20 }}>Liste des Membres</h1>
   <div style={{ overflowX: 'auto' }}>
@@ -564,7 +565,10 @@ const handleScanSuccess = (decodedText) => {
             <td style={{ padding: '10px 15px' }}>{contact.number}</td>
             <td style={{ padding: '10px 15px', fontStyle: 'italic' }}>{contact.qg}</td>
             <td style={{ padding: '10px', textAlign: 'center' }}>
-              <QRCodeSVG value={contact._id} size={64} />
+              {/* ID unique ajouté pour PDF */}
+              <div id={`qr-${contact._id}`}>
+                <QRCodeSVG value={contact._id} size={64} />
+              </div>
             </td>
             <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: contact.presentToday ? '#16a34a' : '#dc2626' }}>
               {contact.presentToday ? 'Présent' : 'Absent'}
@@ -576,6 +580,7 @@ const handleScanSuccess = (decodedText) => {
               <IconButton onClick={() => handleDeleteMember(contact._id)} title="Supprimer">
                 <DeleteIcon />
               </IconButton>
+              {/* Bouton Export PDF */}
               <IconButton onClick={() => exportQrToPdf(contact)} title="Exporter PDF">
                 <PictureAsPdfIcon />
               </IconButton>
