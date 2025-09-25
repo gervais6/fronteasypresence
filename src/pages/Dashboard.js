@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
+import SearchIcon from '@mui/icons-material/Search';
+import {
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
+  TablePagination,  Tooltip
+} from '@mui/material';
+
 import {
   IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   Stack, TextField, Fab
@@ -19,11 +25,17 @@ import 'react-toastify/dist/ReactToastify.css';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import { FiLogOut } from 'react-icons/fi';
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 const API_URL = 'https://backendeasypresence.onrender.com/api/membres';
 const savePendingAction = (action) => {
   const pending = JSON.parse(localStorage.getItem("pendingActions") || "[]");
   pending.push(action);
   localStorage.setItem("pendingActions", JSON.stringify(pending));
+};
+
+const handleLogout = () => {
+  localStorage.removeItem('token');
+  window.location.href = '/login';
 };
 
 // Export PDF
@@ -225,6 +237,9 @@ const Dashboard = () => {
   const [filterQG, setFilterQG] = useState('Tous');
   const [searchTerm, setSearchTerm] = useState("");
   const [isScannerOpen, setScannerOpen] = useState(false);
+// Dans ton composant Dashboard, au début avec les autres useState
+const [page, setPage] = useState(0); // page courante
+const [rowsPerPage, setRowsPerPage] = useState(10); // nombre de lignes par page
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -401,225 +416,265 @@ const handleScanSuccess = (decodedText) => {
       <ToastContainer />
       <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         {/* Header */}
-   <header style={{
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '15px 25px',
-  backgroundColor: '#4A2C2A',
-  color: 'white',
-  gap: 10,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  
-  flexWrap: 'wrap',
-}}>
+          <header style={{
+            position: 'fixed',
+            top: 0,
+            left: isSidebarOpen ? 220 : 70,
+            right: 0,
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '8px 20px',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            transition: 'left 0.3s',
+          }}>
+            {/* Recherche */}
+            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 200 }}>
+              <SearchIcon style={{ marginRight: 8, color: '#9e9e9e' }} />
+              <TextField
+                placeholder="Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="outlined"
+                size="small"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: 25,
+                  padding: '0 10px',
+                }}
+              />
+            </div>
+         <div style={{ display: 'flex', gap: 10, marginLeft: 15 }}>
+  <Button
+    variant="contained"
+    onClick={() => setNewEntryModalOpen(true)}
+    style={{
+     background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+      color: 'white',
+      borderRadius: 20,
+      padding: '6px 16px',
+      textTransform: 'none'
+    }}
+  >
+    Ajouter
+  </Button>
 
-  {/* Bouton Déconnexion à gauche */}
-
-
-  {/* Barre de recherche centrée */}
-  <div style={{
-    flex: '0 1 600px',
-    minWidth: 150,
-    margin: '0 15px',
-  }}>
-    <TextField
-      placeholder="Rechercher..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      variant="outlined"
-      size="small"
-      fullWidth
-      style={{
-        width: '100%',
-        backgroundColor: '#ffffff',
-        borderRadius: 30,
-        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-      }}
-    />
-  </div>
-
-  {/* Bouton Scanner à droite */}
   <Button
     variant="contained"
     onClick={() => setScannerOpen(true)}
     style={{
-      backgroundColor: '#9A616D',
+    background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+
       color: 'white',
-      padding: '8px 20px',
-      borderRadius: 25,
-      textTransform: 'none',
-      fontWeight: 500,
-      flexShrink: 0,
-      transition: 'all 0.3s ease',
+      borderRadius: 20,
+      padding: '6px 16px',
+      textTransform: 'none'
     }}
-    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#b07f8c'}
-    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9A616D'}
   >
-    Scanner QR
+    Scanner
   </Button>
+</div>
 
-</header>
+          </header>
 
+   
+        {/* Sidebar */}
+        <aside style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          height: '100vh',
+          width: isSidebarOpen ? 220 : 60,
+          transition: 'width 0.3s',
+          background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+          color: 'white',
+          display: 'flex',
+          flexDirection: 'column',
+          overflowX: 'hidden',
+          overflowY: 'auto',
+          paddingTop: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10,marginBottom:40 }}>
+            {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap',marginTop:-15 }}>Easy Présence</div>}
+            <IconButton onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ color: 'white',marginTop:-15 }}>
+              {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
+            </IconButton>
+          </div>
 
-     <aside style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      height: '100vh',
-      width: isSidebarOpen ? 220 : 60,
-      transition: 'width 0.3s',
-      background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-      color: 'white',
-      display: 'flex',
-      flexDirection: 'column',
-      overflowX: 'hidden',
-      overflowY: 'auto',
-      paddingTop: 10,
-    }}>
-
-      {/* Toggle Sidebar */}
-      <div style={{ display: 'flex', justifyContent: isSidebarOpen ? 'flex-end' : 'center', padding: 10 }}>
-        <IconButton onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ color: 'white' }}>
-          {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
-        </IconButton>
-      </div>
-
-      {/* Logo / Nom */}
-      {isSidebarOpen && (
-        <div style={{ padding: '10px 15px', fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-          Easy Présence
-        </div>
-      )}
-
-      {/* Liste des QG */}
-      <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        {qgList.map(qg => (
-          <li key={qg} style={{ marginBottom: 5 }}>
-            <Button
-              onClick={() => setFilterQG(qg)}
-              variant={filterQG === qg ? 'contained' : 'text'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                width: '100%',
-                justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-                padding: '10px 12px',
-                color: 'white',
-                backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
-                textTransform: 'none',
-                borderRadius: 20,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                transition: 'all 0.3s',
-              }}
-              onMouseEnter={e => { if (!filterQG === qg) e.currentTarget.style.backgroundColor = '#7b4f59'; }}
-              onMouseLeave={e => { if (!filterQG === qg) e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-              {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{qg}</span>}
-            </Button>
-          </li>
-        ))}
-
-        {/* Bouton Ajouter Membre */}
-        <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center' }}>
-          <Fab
-            color="primary"
-            aria-label="add"
-            size={isSidebarOpen ? "medium" : "small"}
-            onClick={() => setNewEntryModalOpen(true)}
-          >
-            <AddIcon />
-          </Fab>
-        </li>
-
-       
-      </ul>
-    </aside>
+          <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+            {qgList.map(qg => (
+              <li key={qg} style={{ marginBottom: 5 }}>
+                <Button
+                  onClick={() => setFilterQG(qg)}
+                  variant={filterQG === qg ? 'contained' : 'text'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+                    padding: '10px 12px',
+                    color: 'white',
+                    backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
+                    textTransform: 'none',
+                    borderRadius: 20,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s',
+                  }}
+                >
+                  <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
+                  {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{qg}</span>}
+                </Button>
+              </li>
+            ))}
+            <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+              <Button
+                onClick={handleLogout}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: isSidebarOpen ? '90%' : '50px',
+                  backgroundColor: '#9A616D',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  borderRadius: 25,
+                  padding: '12px 15px',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                  transition: 'all 0.3s',
+                }}
+              >
+                <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
+                {isSidebarOpen && <span>Déconnexion</span>}
+              </Button>
+            </li>
+          </ul>
+        </aside>
 
         {/* Main */}
 {/* Main */}
 <main style={{
-  marginLeft: isSidebarOpen ? 220 : 70, // largeur sidebar + un petit padding
+  marginLeft: isSidebarOpen ? 220 : 70,
   padding: 20,
   transition: 'margin-left 0.3s ease',
-  minHeight: '100vh', // pour que le main occupe toute la hauteur
-  backgroundColor: '#f9f9f9', // contraste avec sidebar
+  marginTop: 80,  // espace avec le header fixe
+  minHeight: '100vh',
+  display: 'flex',
+  justifyContent: 'center',
 }}>
-  <h1 style={{ marginBottom: 20 }}>Liste des Membres</h1>
-  <div style={{ overflowX: 'auto' }}>
-    <table style={{
-      width: '100%',
-      borderCollapse: 'separate',
-      borderSpacing: '0 10px',
-      minWidth: 900,
-    }}>
-      <thead>
-        <tr>
-          {['Nom', 'Position', 'Numéro', 'QG', 'QR Code', 'Statut', 'Actions'].map((title) => (
-            <th key={title} style={{
-              textAlign: 'left',
-              padding: '10px 15px',
-              backgroundColor: '#f3f4f6',
-              borderRadius: title === 'Nom' ? '8px 0 0 8px' : title === 'Actions' ? '0 8px 8px 0' : '0',
-              fontWeight: 600
-            }}>{title}</th>
+
+  <TableContainer component={Paper} style={{
+    width: '100%',
+    maxWidth: '100%',
+    overflowX: 'auto',
+    borderRadius: 12,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+  }}>
+    <Table stickyHeader size="medium">
+      <TableHead>
+        <TableRow style={{ backgroundColor: '#f3f4f6' }}>
+          {['Nom', 'Position', 'Numéro', 'QG', 'QR', 'Statut', 'Actions'].map(title => (
+            <TableCell key={title} style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}>
+              {title}
+            </TableCell>
           ))}
-        </tr>
-      </thead>
-      <tbody>
-        {displayContacts.map(contact => (
-          <tr key={contact._id} style={{
-            backgroundColor: '#ffffff',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-            borderRadius: 8,
-            marginBottom: 10,
-          }}>
-            <td style={{ padding: '10px 15px' }}>{contact.name}</td>
-            <td style={{ padding: '10px 15px' }}>{contact.position}</td>
-            <td style={{ padding: '10px 15px' }}>{contact.number}</td>
-            <td style={{ padding: '10px 15px', fontStyle: 'italic' }}>{contact.qg}</td>
-            <td style={{ padding: '10px', textAlign: 'center' }}>
-              {/* ID unique ajouté pour PDF */}
-              <div id={`qr-${contact._id}`}>
-                <QRCodeSVG value={contact._id} size={64} />
-              </div>
-            </td>
-            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: contact.presentToday ? '#16a34a' : '#dc2626' }}>
-              {contact.presentToday ? 'Présent' : 'Absent'}
-            </td>
-            <td style={{ padding: '10px', display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} title="Modifier">
-                <EditIcon />
-              </IconButton>
-              <IconButton onClick={() => handleDeleteMember(contact._id)} title="Supprimer">
-                <DeleteIcon />
-              </IconButton>
-              {/* Bouton Export PDF */}
-              <IconButton onClick={() => exportQrToPdf(contact)} title="Exporter PDF">
-                <PictureAsPdfIcon />
-              </IconButton>
-              <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} title="Historique">
-                <HistoryIcon />
-              </IconButton>
-              <IconButton
-                onClick={() => handleTogglePresence(contact._id)}
-                title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}
-                style={{
-                  backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
-                  color: "white"
-                }}
-              >
-                {contact.presentToday ? <CloseIcon /> : <CheckIcon />}
-              </IconButton>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+        </TableRow>
+      </TableHead>
+
+      <TableBody>
+        {displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map(contact => (
+            <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
+              <TableCell style={{ padding: '10px 16px' }}>{contact.name}</TableCell>
+              <TableCell style={{ padding: '10px 16px' }}>{contact.position}</TableCell>
+              <TableCell style={{ padding: '10px 16px' }}>{contact.number}</TableCell>
+              <TableCell style={{ padding: '10px 16px', fontStyle: 'italic' }}>{contact.qg}</TableCell>
+
+              {/* QR Code avec div pour PDF */}
+              <TableCell style={{ padding: '10px', textAlign: 'center' }}>
+                <div id={`qr-${contact._id}`}>
+                  <QRCodeSVG value={contact._id} size={50} />
+                </div>
+              </TableCell>
+
+              <TableCell style={{
+                padding: '10px 16px',
+                color: contact.presentToday ? '#16a34a' : '#dc2626',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                {contact.presentToday ? 'Présent' : 'Absent'}
+              </TableCell>
+
+              <TableCell style={{ padding: '10px 16px' }}>
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  gap: 4,
+                  alignItems: 'center'
+                }}>
+                  <Tooltip title="Modifier">
+                    <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="Supprimer">
+                    <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="Exporter PDF">
+                    <IconButton onClick={() => exportQrToPdf(contact)} size="small">
+                      <PictureAsPdfIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title="Historique">
+                    <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
+                      <HistoryIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
+                    <IconButton
+                      onClick={() => handleTogglePresence(contact._id)}
+                      size="small"
+                      style={{
+                        backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
+                        color: "white",
+                      }}
+                    >
+                      {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+      </TableBody>
+    </Table>
+
+    <TablePagination
+      rowsPerPageOptions={[5, 10, 25]}
+      component="div"
+      count={displayContacts.length}
+      rowsPerPage={rowsPerPage}
+      page={page}
+      onPageChange={(e, newPage) => setPage(newPage)}
+      onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+      size="small"
+    />
+  </TableContainer>
 </main>
+
+
 
       </div>
 
