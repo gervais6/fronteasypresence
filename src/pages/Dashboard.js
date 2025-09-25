@@ -499,7 +499,7 @@ const handleScanSuccess = (decodedText) => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10,marginBottom:40 }}>
             {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap',marginTop:-15 }}>Easy Présence</div>}
-            <IconButton onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ color: 'white',marginTop:-15 }}>
+            <IconButton onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ color: 'white',marginTop:-20 }}>
               {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
             </IconButton>
           </div>
@@ -610,52 +610,54 @@ const handleScanSuccess = (decodedText) => {
                 {contact.presentToday ? 'Présent' : 'Absent'}
               </TableCell>
 
-              <TableCell style={{ padding: '10px 16px' }}>
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  gap: 4,
-                  alignItems: 'center'
-                }}>
-                  <Tooltip title="Modifier">
-                    <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+            <TableCell style={{ padding: '10px 16px' }}>
+  <div style={{
+    display: 'flex',
+    flexWrap: 'nowrap', // ✅ reste sur une ligne
+    justifyContent: 'center',
+    gap: 6,
+    alignItems: 'center',
+    overflowX: 'auto'   // ✅ évite le débordement
+  }}>
+    <Tooltip title="Modifier">
+      <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
+        <EditIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
 
-                  <Tooltip title="Supprimer">
-                    <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+    <Tooltip title="Supprimer">
+      <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
 
-                  <Tooltip title="Exporter PDF">
-                    <IconButton onClick={() => exportQrToPdf(contact)} size="small">
-                      <PictureAsPdfIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+    <Tooltip title="Exporter PDF">
+      <IconButton onClick={() => exportQrToPdf(contact)} size="small">
+        <PictureAsPdfIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
 
-                  <Tooltip title="Historique">
-                    <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
-                      <HistoryIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+    <Tooltip title="Historique">
+      <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
+        <HistoryIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
 
-                  <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
-                    <IconButton
-                      onClick={() => handleTogglePresence(contact._id)}
-                      size="small"
-                      style={{
-                        backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
-                        color: "white",
-                      }}
-                    >
-                      {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-                    </IconButton>
-                  </Tooltip>
-                </div>
-              </TableCell>
+    <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
+      <IconButton
+        onClick={() => handleTogglePresence(contact._id)}
+        size="small"
+        style={{
+          backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
+          color: "white",
+        }}
+      >
+        {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+  </div>
+</TableCell>
+
             </TableRow>
           ))}
       </TableBody>
