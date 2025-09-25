@@ -160,32 +160,37 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
     let html5QrCode;
     let isScanning = false;
 
-    const startScanner = async () => {
-      html5QrCode = new Html5Qrcode(qrCodeRegionId);
-      const scanCallback = (decodedText) => {
-        if (!isScanning) return;
-        isScanning = false;
-        onScanSuccess(decodedText);
-        html5QrCode.stop().catch(() => {});
-        onClose();
-      };
+   const startScanner = async () => {
+  html5QrCode = new Html5Qrcode(qrCodeRegionId);
+  const scanCallback = (decodedText) => {
+    if (!isScanning) return;
+    isScanning = false;
+    onScanSuccess(decodedText);
 
-      try {
-        isScanning = true;
-        await html5QrCode.start(
-          { facingMode: { exact: "environment" } }, 
-          { fps: 10, qrbox: 250 }, 
-          scanCallback
-        );
-      } catch {
-        isScanning = true;
-        await html5QrCode.start(
-          { facingMode: "user" }, 
-          { fps: 10, qrbox: 250 }, 
-          scanCallback
-        );
-      }
-    };
+    // vibration ici aussi si tu veux feedback direct
+    if (navigator.vibrate) navigator.vibrate(200);
+
+    html5QrCode.stop().catch(() => {});
+    onClose();
+  };
+
+  try {
+    isScanning = true;
+    await html5QrCode.start(
+      { facingMode: "environment" }, // 👈 corrige ici
+      { fps: 10, qrbox: 250 },
+      scanCallback
+    );
+  } catch {
+    // fallback caméra selfie
+    isScanning = true;
+    await html5QrCode.start(
+      { facingMode: "user" },
+      { fps: 10, qrbox: 250 },
+      scanCallback
+    );
+  }
+};
 
     const timeout = setTimeout(startScanner, 300);
 
