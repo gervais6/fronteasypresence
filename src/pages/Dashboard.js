@@ -587,11 +587,9 @@ const handleScanSuccess = (decodedText) => {
 {/* Main */}
 <main style={{
   marginLeft: isSidebarOpen ? 220 : 70,
-      marginTop: window.innerWidth < 600 ? 120 : 80, // ✅ 120px sur mobile car header double ligne
-
+  marginTop: window.innerWidth < 600 ? 140 : 80,
   padding: 20,
   transition: 'margin-left 0.3s ease',
-  marginTop: 80,  // espace avec le header fixe
   minHeight: '100vh',
   display: 'flex',
   justifyContent: 'center',
@@ -603,6 +601,7 @@ const handleScanSuccess = (decodedText) => {
     overflowX: 'auto',
     borderRadius: 12,
     boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    backgroundColor: '#fff',
   }}>
     <Table stickyHeader size="medium">
       <TableHead>
@@ -619,75 +618,68 @@ const handleScanSuccess = (decodedText) => {
         {displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
           .map(contact => (
             <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
-              <TableCell style={{ padding: '10px 16px' }}>{contact.name}</TableCell>
-              <TableCell style={{ padding: '10px 16px' }}>{contact.position}</TableCell>
-              <TableCell style={{ padding: '10px 16px' }}>{contact.number}</TableCell>
-              <TableCell style={{ padding: '10px 16px', fontStyle: 'italic' }}>{contact.qg}</TableCell>
-
-              {/* QR Code avec div pour PDF */}
-              <TableCell style={{ padding: '10px', textAlign: 'center' }}>
+              <TableCell data-label="Nom">{contact.name}</TableCell>
+              <TableCell data-label="Position">{contact.position}</TableCell>
+              <TableCell data-label="Numéro">{contact.number}</TableCell>
+              <TableCell data-label="QG" style={{ fontStyle: 'italic' }}>{contact.qg}</TableCell>
+              <TableCell data-label="QR" style={{ textAlign: 'center' }}>
                 <div id={`qr-${contact._id}`}>
                   <QRCodeSVG value={contact._id} size={50} />
                 </div>
               </TableCell>
-
-              <TableCell style={{
-                padding: '10px 16px',
+              <TableCell data-label="Statut" style={{
                 color: contact.presentToday ? '#16a34a' : '#dc2626',
                 fontWeight: 'bold',
                 textAlign: 'center'
               }}>
                 {contact.presentToday ? 'Présent' : 'Absent'}
               </TableCell>
+              <TableCell data-label="Actions">
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'nowrap', // ✅ une seule ligne
+                  justifyContent: 'center',
+                  gap: 6,
+                  overflowX: 'auto', // scroll si déborde
+                }}>
+                  <Tooltip title="Modifier">
+                    <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-            <TableCell style={{ padding: '10px 16px' }}>
-  <div style={{
-    display: 'flex',
-    flexWrap: 'nowrap', // ✅ reste sur une ligne
-    justifyContent: 'center',
-    gap: 6,
-    alignItems: 'center',
-    overflowX: 'auto'   // ✅ évite le débordement
-  }}>
-    <Tooltip title="Modifier">
-      <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
-        <EditIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
+                  <Tooltip title="Supprimer">
+                    <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-    <Tooltip title="Supprimer">
-      <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
-        <DeleteIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
+                  <Tooltip title="Exporter PDF">
+                    <IconButton onClick={() => exportQrToPdf(contact)} size="small">
+                      <PictureAsPdfIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-    <Tooltip title="Exporter PDF">
-      <IconButton onClick={() => exportQrToPdf(contact)} size="small">
-        <PictureAsPdfIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
+                  <Tooltip title="Historique">
+                    <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
+                      <HistoryIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
 
-    <Tooltip title="Historique">
-      <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
-        <HistoryIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-
-    <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
-      <IconButton
-        onClick={() => handleTogglePresence(contact._id)}
-        size="small"
-        style={{
-          backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
-          color: "white",
-        }}
-      >
-        {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-      </IconButton>
-    </Tooltip>
-  </div>
-</TableCell>
-
+                  <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
+                    <IconButton
+                      onClick={() => handleTogglePresence(contact._id)}
+                      size="small"
+                      style={{
+                        backgroundColor: contact.presentToday ? "#dc2626" : "#16a34a",
+                        color: "white",
+                      }}
+                    >
+                      {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </TableCell>
             </TableRow>
           ))}
       </TableBody>
@@ -704,7 +696,53 @@ const handleScanSuccess = (decodedText) => {
       size="small"
     />
   </TableContainer>
+
+  {/* CSS responsive */}
+  <style>
+    {`
+      @media (max-width: 600px) {
+        table, thead, tbody, th, td, tr {
+          display: block;
+          width: 100%;
+        }
+        thead tr {
+          display: none;
+        }
+        tbody tr {
+          margin-bottom: 16px;
+          border: 1px solid #ddd;
+          border-radius: 12px;
+          padding: 12px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+          background-color: #fff;
+        }
+        tbody td {
+          display: flex;
+          justify-content: space-between;
+          padding: 6px 0;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+        }
+        tbody td:last-child {
+          border-bottom: none;
+        }
+        tbody td::before {
+          content: attr(data-label);
+          font-weight: bold;
+          flex: 1;
+          margin-right: 8px;
+        }
+        /* ⚡ Forcer Actions sur une seule ligne */
+        tbody td:last-child div {
+          flex-wrap: nowrap !important;
+          justify-content: flex-end;
+          overflow-x: auto;
+        }
+      }
+    `}
+  </style>
 </main>
+
 
 
 
