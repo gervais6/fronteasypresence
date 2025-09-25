@@ -416,69 +416,97 @@ const handleScanSuccess = (decodedText) => {
       <ToastContainer />
       <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         {/* Header */}
-          <header style={{
-            position: 'fixed',
-            top: 0,
-            left: isSidebarOpen ? 220 : 70,
-            right: 0,
-            zIndex: 100,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '8px 20px',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            transition: 'left 0.3s',
-          }}>
-            {/* Recherche */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 200 }}>
-              <SearchIcon style={{ marginRight: 8, color: '#9e9e9e' }} />
-              <TextField
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                style={{
-                  flex: 1,
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: 25,
-                  padding: '0 10px',
-                }}
-              />
-            </div>
-         <div style={{ display: 'flex', gap: 10, marginLeft: 15 }}>
-  <Button
-    variant="contained"
-    onClick={() => setNewEntryModalOpen(true)}
-    style={{
-     background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-      color: 'white',
-      borderRadius: 20,
-      padding: '6px 16px',
-      textTransform: 'none'
-    }}
-  >
-    Ajouter
-  </Button>
+<header
+  style={{
+    position: "fixed",
+    top: 0,
+    left: isSidebarOpen ? 220 : 70,
+    right: 0,
+    zIndex: 100,
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    padding: "8px 20px",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    gap: 10,
+  }}
+>
+  {/* Barre de recherche */}
+  <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 200, maxWidth: "100%" }}>
+    <SearchIcon style={{ marginRight: 8, color: "#9e9e9e" }} />
+    <TextField
+      placeholder="Rechercher..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      variant="outlined"
+      size="small"
+      style={{
+        flex: 1,
+        backgroundColor: "#f5f5f5",
+        borderRadius: 25,
+        padding: "0 10px",
+        minWidth: 120,
+      }}
+    />
+  </div>
 
-  <Button
-    variant="contained"
-    onClick={() => setScannerOpen(true)}
-    style={{
-    background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+  {/* Boutons */}
+  <div className="header-buttons">
+    <Button
+      variant="contained"
+      onClick={() => setNewEntryModalOpen(true)}
+      style={{
+        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+        color: "white",
+        borderRadius: 20,
+        padding: "6px 16px",
+        textTransform: "none",
+        minWidth: 90,
+      }}
+    >
+      Ajouter
+    </Button>
 
-      color: 'white',
-      borderRadius: 20,
-      padding: '6px 16px',
-      textTransform: 'none'
-    }}
-  >
-    Scanner
-  </Button>
-</div>
+    <Button
+      variant="contained"
+      onClick={() => setScannerOpen(true)}
+      style={{
+        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+        color: "white",
+        borderRadius: 20,
+        padding: "6px 16px",
+        textTransform: "none",
+        minWidth: 90,
+      }}
+    >
+      Scanner
+    </Button>
+  </div>
 
-          </header>
+  {/* CSS */}
+  <style>
+    {`
+      .header-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end; /* Desktop : droite */
+        margin-left: 15px;
+      }
+
+      @media (max-width: 600px) {
+        .header-buttons {
+          width: 100%;
+          justify-content: center; /* Mobile : centré sous recherche */
+          margin-left: 0;
+          margin-top: 8px;
+        }
+      }
+    `}
+  </style>
+</header>
+
 
    
         {/* Sidebar */}
@@ -559,6 +587,8 @@ const handleScanSuccess = (decodedText) => {
 {/* Main */}
 <main style={{
   marginLeft: isSidebarOpen ? 220 : 70,
+      marginTop: window.innerWidth < 600 ? 120 : 80, // ✅ 120px sur mobile car header double ligne
+
   padding: 20,
   transition: 'margin-left 0.3s ease',
   marginTop: 80,  // espace avec le header fixe
