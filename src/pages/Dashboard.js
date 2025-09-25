@@ -697,50 +697,6 @@ const handleScanSuccess = (decodedText) => {
     />
   </TableContainer>
 
-  {/* CSS responsive */}
-  <style>
-    {`
-      @media (max-width: 600px) {
-        table, thead, tbody, th, td, tr {
-          display: block;
-          width: 100%;
-        }
-        thead tr {
-          display: none;
-        }
-        tbody tr {
-          margin-bottom: 16px;
-          border: 1px solid #ddd;
-          border-radius: 12px;
-          padding: 12px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-          background-color: #fff;
-        }
-        tbody td {
-          display: flex;
-          justify-content: space-between;
-          padding: 6px 0;
-          text-align: left;
-          border-bottom: 1px solid #eee;
-        }
-        tbody td:last-child {
-          border-bottom: none;
-        }
-        tbody td::before {
-          content: attr(data-label);
-          font-weight: bold;
-          flex: 1;
-          margin-right: 8px;
-        }
-        /* ⚡ Forcer Actions sur une seule ligne */
-        tbody td:last-child div {
-          flex-wrap: nowrap !important;
-          justify-content: flex-end;
-          overflow-x: auto;
-        }
-      }
-    `}
-  </style>
 </main>
 
 
