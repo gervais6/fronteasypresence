@@ -20,7 +20,7 @@ const Login = () => {
     
         if (!email || !password) {
             toast.error("Tous les champs sont requis.", {
-                autoClose: 2000,
+                autoClose: 1000,
                 hideProgressBar: true,
                 closeOnClick: true,
                 pauseOnHover: false,
@@ -30,7 +30,7 @@ const Login = () => {
         }
     
         try {
-            const response = await axios.post('https://vlr-21c2.onrender.com/api/auth/login', {
+            const response = await axios.post('https://backendeasypresence.onrender.com/api/auth/login', {
                 email,
                 password
             });

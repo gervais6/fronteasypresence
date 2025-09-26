@@ -109,21 +109,92 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{contact ? "Modifier membre" : "Ajouter membre"}</DialogTitle>
-      <DialogContent>
-        <Stack spacing={2}>
-          <TextField label="Nom" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-          <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth />
-          <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth />
-          <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Annuler</Button>
-        <Button onClick={handleSave}>Enregistrer</Button>
-      </DialogActions>
-    </Dialog>
+   <Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    style: {
+      borderRadius: 20,
+      padding: 20,
+      background: '#fdfdfd',
+      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+    }
+  }}
+>
+  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+    {contact ? "Modifier membre" : "Ajouter membre"}
+  </DialogTitle>
+
+  <DialogContent style={{ paddingTop: 10 }}>
+    <Stack spacing={2}>
+      <TextField 
+        label="Nom" 
+        value={name} 
+        onChange={(e) => setName(e.target.value)} 
+        fullWidth 
+        variant="outlined"
+        InputProps={{ style: { borderRadius: 12, backgroundColor: '#f5f5f5' } }}
+      />
+      <TextField 
+        label="Position" 
+        value={position} 
+        onChange={(e) => setPosition(e.target.value)} 
+        fullWidth 
+        variant="outlined"
+        InputProps={{ style: { borderRadius: 12, backgroundColor: '#f5f5f5' } }}
+      />
+      <TextField 
+        label="Numéro" 
+        value={number} 
+        onChange={(e) => setNumber(e.target.value)} 
+        fullWidth 
+        variant="outlined"
+        InputProps={{ style: { borderRadius: 12, backgroundColor: '#f5f5f5' } }}
+      />
+      <TextField 
+        label="QG" 
+        value={qg} 
+        onChange={(e) => setQG(e.target.value)} 
+        fullWidth 
+        variant="outlined"
+        InputProps={{ style: { borderRadius: 12, backgroundColor: '#f5f5f5' } }}
+      />
+    </Stack>
+  </DialogContent>
+
+  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
+    <Button
+      onClick={onClose}
+      style={{
+        backgroundColor: '#9A616D',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none',
+        marginRight: 10,
+      }}
+    >
+      Annuler
+    </Button>
+    <Button
+      onClick={handleSave}
+      style={{
+        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none',
+      }}
+    >
+      Enregistrer
+    </Button>
+  </DialogActions>
+</Dialog>
+
   );
 };
 
@@ -131,36 +202,70 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
 const HistoryModal = ({ open, onClose, contact }) => {
   if (!contact) return null;
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Historique: {contact.name}</DialogTitle>
-      <DialogContent dividers>
-        {(!contact.history || contact.history.length === 0) ? (
-          <p>Aucun historique pour ce membre.</p>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contact.history.map((entry, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td>{entry.date}</td>
-                  <td style={{ color: entry.present ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
-                    {entry.present ? '✅ Présent' : '❌ Absent'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Fermer</Button>
-      </DialogActions>
-    </Dialog>
+   <Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    style: {
+      borderRadius: 20,
+      padding: 20,
+      background: '#fdfdfd',
+      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+    }
+  }}
+>
+  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+    Historique: {contact.name}
+  </DialogTitle>
+
+  <DialogContent dividers style={{ paddingTop: 10 }}>
+    {(!contact.history || contact.history.length === 0) ? (
+      <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucun historique pour ce membre.</p>
+    ) : (
+      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f3f4f6' }}>
+            <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Date</th>
+            <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {contact.history.map((entry, idx) => (
+            <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
+              <td style={{ padding: '8px 0' }}>{entry.date}</td>
+              <td style={{
+                color: entry.present ? '#16a34a' : '#dc2626',
+                fontWeight: 'bold',
+                padding: '8px 0'
+              }}>
+                {entry.present ? '✅ Présent' : '❌ Absent'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+  </DialogContent>
+
+  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
+    <Button
+      onClick={onClose}
+      style={{
+        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none',
+      }}
+    >
+      Fermer
+    </Button>
+  </DialogActions>
+</Dialog>
+
   );
 };
 
@@ -215,15 +320,61 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
   }, [open, onClose, onScanSuccess]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Scanner QR Code</DialogTitle>
-      <DialogContent>
-        <div id={qrCodeRegionId} style={{ width: '100%', height: 400 }}></div>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Fermer</Button>
-      </DialogActions>
-    </Dialog>
+    <Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    style: {
+      borderRadius: 20,
+      padding: 20,
+      background: '#fdfdfd',
+      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+    }
+  }}
+>
+  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+    Scanner QR Code
+  </DialogTitle>
+
+  <DialogContent dividers style={{ paddingTop: 10 }}>
+    <div
+      id={qrCodeRegionId}
+      style={{
+        width: '100%',
+        height: 400,
+        border: '2px dashed #9A616D',
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#fafafa'
+      }}
+    >
+      <span style={{ color: '#9A616D', fontStyle: 'italic' }}>
+        📷 Cadrez un QR code pour scanner
+      </span>
+    </div>
+  </DialogContent>
+
+  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
+    <Button
+      onClick={onClose}
+      style={{
+        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none',
+      }}
+    >
+      Fermer
+    </Button>
+  </DialogActions>
+</Dialog>
+
   );
 };
 

@@ -28,7 +28,7 @@ const Inscrire = () => {
         }
 
         try {
-            const response = await axios.post('https://vlr-21c2.onrender.com/api/auth/register', {
+            const response = await axios.post('https://backendeasypresence.onrender.com/api/auth/register', {
                 username: name,
                 email,
                 password
