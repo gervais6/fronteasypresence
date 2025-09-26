@@ -810,20 +810,12 @@ const handleScanSuccess = (decodedText) => {
 <TableCell>
   <div
     style={{
-      padding: '6px 12px',
       borderRadius: 12,
-           backgroundColor: '#fff7ed', // orange très clair pour numéro
-      color: '#78350f', // orange foncé pour texte
-      fontWeight: 600,
-      display: 'inline-block',
-      minWidth: 60,
+      fontStyle: 'italic',
+
+      fontWeight: 500,
       textAlign: 'center',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-      transition: 'transform 0.2s',
-      cursor: 'default',
     }}
-    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
   >
     {contact.name}
   </div>
@@ -831,19 +823,15 @@ const handleScanSuccess = (decodedText) => {
              <TableCell>
   <div
     style={{
-      padding: '6px 12px',
       borderRadius: 12,
-           backgroundColor: '#fff7ed', // orange très clair pour numéro
-      color: '#78350f', // orange foncé pour texte
-      display: 'inline-block',
       minWidth: 60,
       textAlign: 'center',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+      fontWeight:500,
       transition: 'transform 0.2s',
       cursor: 'default',
+            fontStyle: 'italic',
+
     }}
-    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
   >
     {contact.position}
   </div>
@@ -852,20 +840,14 @@ const handleScanSuccess = (decodedText) => {
 <TableCell>
   <div
     style={{
-      padding: '6px 12px',
       borderRadius: 12,
-      backgroundColor: '#fff7ed', // orange très clair pour numéro
-      color: '#78350f', // orange foncé pour texte
       fontWeight: 500,
-      display: 'inline-block',
       minWidth: 60,
       textAlign: 'center',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-      transition: 'transform 0.2s',
       cursor: 'default',
+            fontStyle: 'italic',
+
     }}
-    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
   >
     {contact.number}
   </div>
@@ -876,26 +858,19 @@ const handleScanSuccess = (decodedText) => {
     style={{
       padding: '6px 12px',
       borderRadius: 12,
-           backgroundColor: '#fff7ed', // orange très clair pour numéro
-      color: '#78350f', // orange foncé pour texte
       fontWeight: 500,
       fontStyle: 'italic',
-      display: 'inline-block',
       minWidth: 60,
       textAlign: 'center',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-      transition: 'transform 0.2s',
       cursor: 'default',
     }}
-    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
   >
     {contact.qg}
   </div>
 </TableCell>
 
             <TableCell style={{ textAlign: 'center' }}>
-  <div
+  <div  id={`qr-${contact._id}`}
     style={{
       display: 'inline-block',
       padding: 8,
@@ -975,6 +950,8 @@ const handleScanSuccess = (decodedText) => {
                     >
                       <PictureAsPdfIcon fontSize="small" />
                     </IconButton>
+
+                    
                   </Tooltip>
 
                   <Tooltip title="Historique">
