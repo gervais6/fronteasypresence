@@ -203,73 +203,76 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
 // Modal Historique
 const HistoryModal = ({ open, onClose, contact }) => {
   if (!contact) return null;
+
   return (
-   <Dialog
-  open={open}
-  onClose={onClose}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    style: {
-      borderRadius: 20,
-      padding: 20,
-      background: '#fdfdfd',
-      boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-    }
-  }}
->
-  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
-    Historique: {contact.name}
-  </DialogTitle>
-
-  <DialogContent dividers style={{ paddingTop: 10 }}>
-    {(!contact.history || contact.history.length === 0) ? (
-      <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucun historique pour ce membre.</p>
-    ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#f3f4f6' }}>
-            <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Date</th>
-            <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          {contact.history.map((entry, idx) => (
-            <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-              <td style={{ padding: '8px 0' }}>{entry.date}</td>
-              <td style={{
-                color: entry.present ? '#16a34a' : '#dc2626',
-                fontWeight: 'bold',
-                padding: '8px 0'
-              }}>
-                {entry.present ? '✅ Présent' : '❌ Absent'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )}
-  </DialogContent>
-
-  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
-    <Button
-      onClick={onClose}
-      style={{
-        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-        color: 'white',
-        borderRadius: 12,
-        padding: '8px 20px',
-        fontWeight: 'bold',
-        textTransform: 'none',
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        style: {
+          borderRadius: 20,
+          padding: 20,
+          background: '#fdfdfd',
+          boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
+        }
       }}
     >
-      Fermer
-    </Button>
-  </DialogActions>
-</Dialog>
+      <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+        Historique: {contact.name}
+      </DialogTitle>
 
+      <DialogContent dividers style={{ paddingTop: 10 }}>
+        {(!contact.history || contact.history.length === 0) ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucun historique pour ce membre.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f3f4f6' }}>
+                <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Date</th>
+                <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contact.history.map((entry, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
+                  <td style={{ padding: '8px 0' }}>{entry.date}</td>
+                  <td style={{
+                    color: entry.present ? '#16a34a' : '#dc2626',
+                    fontWeight: 'bold',
+                    padding: '8px 0'
+                  }}>
+                    {entry.present 
+                      ? `✅ Présent à ${entry.time || '--:--'}` 
+                      : '❌ Absent'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </DialogContent>
+
+      <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
+        <Button
+          onClick={onClose}
+          style={{
+            background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+            color: 'white',
+            borderRadius: 12,
+            padding: '8px 20px',
+            fontWeight: 'bold',
+            textTransform: 'none',
+          }}
+        >
+          Fermer
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
+
 
 // Modal Scanner QR
 const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
@@ -469,18 +472,32 @@ const handleTogglePresence = (id) => {
   const updated = contacts.map(c => {
     if (c._id === id) {
       const todayEntryIndex = c.history?.findIndex(h => h.date === today);
+
+      // Heure actuelle au format HH:MM
+      const now = new Date();
+      const timeStr = now.getHours().toString().padStart(2, '0') 
+                    + ':' + now.getMinutes().toString().padStart(2, '0');
+
       if (todayEntryIndex >= 0 && c.history[todayEntryIndex].present) {
         // Déjà présent aujourd'hui, on bloque
         toast.info(`${c.name} est déjà marqué présent aujourd'hui.`);
         return c;
       }
 
-      // Sinon on ajoute comme présent
+      // Ajouter ou mettre à jour l'entrée d'aujourd'hui avec l'heure
       const updatedHistory = todayEntryIndex >= 0
         ? [...c.history]
-        : c.history ? [...c.history, { date: today, present: true }] : [{ date: today, present: true }];
+        : c.history 
+          ? [...c.history, { date: today, present: true, time: timeStr }]
+          : [{ date: today, present: true, time: timeStr }];
 
-      if (todayEntryIndex >= 0) updatedHistory[todayEntryIndex].present = true;
+      if (todayEntryIndex >= 0) {
+        updatedHistory[todayEntryIndex] = {
+          ...updatedHistory[todayEntryIndex],
+          present: true,
+          time: timeStr
+        };
+      }
 
       return { ...c, history: updatedHistory };
     }
@@ -492,10 +509,12 @@ const handleTogglePresence = (id) => {
 
   const updatedMember = updated.find(c => c._id === id);
   if (navigator.onLine) 
-    axios.put(`${API_URL}/${id}`, updatedMember).catch(() => savePendingAction({ type: "update", data: updatedMember }));
+    axios.put(`${API_URL}/${id}`, updatedMember)
+         .catch(() => savePendingAction({ type: "update", data: updatedMember }));
   else 
     savePendingAction({ type: "update", data: updatedMember });
 };
+
 
 
 
