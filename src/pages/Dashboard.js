@@ -576,72 +576,79 @@ const handleScanSuccess = (decodedText) => {
     zIndex: 100,
     display: "flex",
     flexWrap: "wrap",
-    alignItems: "center",
+    alignItems: "",
     padding: "8px 20px",
     backgroundColor: "#fff",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
     gap: 10,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   }}
   className="main-header"
 >
   {/* Barre de recherche */}
-  <div style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 200, maxWidth: "100%" }}>
-    <SearchIcon style={{ marginRight: 8, color: "#9e9e9e" }} />
-    <TextField
-      placeholder="Rechercher..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      variant="outlined"
-      size="small"
-      style={{
-        flex: 1,
-        backgroundColor: "#f5f5f5",
-        borderRadius: 25,
-        padding: "0 10px",
-        minWidth: 120,
-      }}
-    />
-  </div>
 
   {/* Boutons */}
-  <div className="header-buttons">
-    <Button
-      variant="contained"
-      onClick={() => setNewEntryModalOpen(true)}
-      style={{
-        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
-        color: "white",
-        borderRadius: 20,
-        padding: "6px 16px",
-        textTransform: "none",
-        minWidth: 90,
-      }}
-    >
-      Ajouter
-    </Button>
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    padding: "6px 12px",
+    borderRadius: 25,
+    background: "linear-gradient(135deg, #4A2C2A, #9A616D)",
+    gap: 8,
+    
+  }}
+>
+  <SearchIcon style={{ marginRight: 8, color: "#fff", fontSize: 28 }} />
+  <TextField
+    placeholder="Rechercher..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    variant="outlined"
+    size="small"
+    style={{
+      backgroundColor: "rgba(255,255,255,0.9)",
+      borderRadius: 20,
+      padding: "0 10px",
+      width: 1000, // <- largeur fixe pour retrouver la taille d’avant
+    }}
+  />
+  <Button
+    variant="contained"
+    onClick={() => setNewEntryModalOpen(true)}
+    style={{
+      background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+      color: "white",
+      borderRadius: 20,
+      padding: "6px 16px",
+      textTransform: "none",
+    }}
+  >
+    Ajouter
+  </Button>
+  <Button
+    variant="contained"
+    onClick={() => setScannerOpen(true)}
+    style={{
+      background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+      color: "white",
+      borderRadius: 20,
+      padding: "6px 16px",
+      textTransform: "none",
+    }}
+  >
+    Scanner
+  </Button>
+</div>
 
-    <Button
-      variant="contained"
-      onClick={() => setScannerOpen(true)}
-      style={{
-        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
-        color: "white",
-        borderRadius: 20,
-        padding: "6px 16px",
-        textTransform: "none",
-        minWidth: 90,
-      }}
-    >
-      Scanner
-    </Button>
-  </div>
 
   {/* CSS */}
   <style>
     {`
       .header-buttons {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
         justify-content: flex-end;
         margin-left: 15px;
@@ -659,80 +666,103 @@ const handleScanSuccess = (decodedText) => {
 
 
 
+
    
         {/* Sidebar */}
-        <aside style={{
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          height: '100vh',
-          width: isSidebarOpen ? 220 : 60,
-          transition: 'width 0.3s',
-          background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-          color: 'white',
-          display: 'flex',
-          flexDirection: 'column',
-          overflowX: 'hidden',
-          overflowY: 'auto',
-          paddingTop: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10,marginBottom:40 }}>
-            {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap',marginTop:-15 }}>Easy Présence</div>}
-            <IconButton onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ color: 'white',marginTop:-20 }}>
-              {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
-            </IconButton>
-          </div>
+   <aside style={{
+  position: 'fixed',
+  left: 0,
+  top: 0,
+  height: '100vh',
+  width: isSidebarOpen ? 220 : 60,
+  transition: 'width 0.3s ease-in-out',
+  background: 'linear-gradient(180deg, #4A2C2A, #7B3F51)',
+  color: 'white',
+  display: 'flex',
+  flexDirection: 'column',
+  overflowX: 'hidden',
+  overflowY: 'auto',
+  paddingTop: 10,
+  boxShadow: '2px 0 12px rgba(0,0,0,0.1)',
+}}>
 
-          <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-            {qgList.map(qg => (
-              <li key={qg} style={{ marginBottom: 5 }}>
-                <Button
-                  onClick={() => setFilterQG(qg)}
-                  variant={filterQG === qg ? 'contained' : 'text'}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    width: '100%',
-                    justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-                    padding: '10px 12px',
-                    color: 'white',
-                    backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
-                    textTransform: 'none',
-                    borderRadius: 20,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    transition: 'all 0.3s',
-                  }}
-                >
-                  <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-                  {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{qg}</span>}
-                </Button>
-              </li>
-            ))}
-            <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <Button
-                onClick={handleLogout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: isSidebarOpen ? '90%' : '50px',
-                  backgroundColor: '#9A616D',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  textTransform: 'none',
-                  borderRadius: 25,
-                  padding: '12px 15px',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                  transition: 'all 0.3s',
-                }}
-              >
-                <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
-                {isSidebarOpen && <span>Déconnexion</span>}
-              </Button>
-            </li>
-          </ul>
-        </aside>
+  {/* Header */}
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10, marginBottom: 40 }}>
+    {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap', marginTop: -15 }}>Easy Présence</div>}
+    <IconButton
+      onClick={() => setSidebarOpen(!isSidebarOpen)}
+      style={{
+        color: 'white',
+        marginTop: -20,
+        transition: 'transform 0.3s',
+      }}
+      onMouseEnter={e => e.currentTarget.style.transform = 'rotate(180deg)'}
+      onMouseLeave={e => e.currentTarget.style.transform = 'rotate(0deg)'}
+    >
+      {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
+    </IconButton>
+  </div>
+
+  {/* QG List */}
+  <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+    {qgList.map(qg => (
+      <li key={qg} style={{ marginBottom: 8 }}>
+        <Button
+          onClick={() => setFilterQG(qg)}
+          variant={filterQG === qg ? 'contained' : 'text'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            width: '100%',
+            justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+            padding: '10px 14px',
+            color: 'white',
+            backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
+            textTransform: 'none',
+            borderRadius: 20,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            boxShadow: filterQG === qg ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+            transition: 'all 0.3s',
+            fontWeight: 500,
+          }}
+          onMouseEnter={e => e.currentTarget.style.backgroundColor = filterQG === qg ? '#A47580' : 'rgba(255,255,255,0.1)'}
+          onMouseLeave={e => e.currentTarget.style.backgroundColor = filterQG === qg ? '#9A616D' : 'transparent'}
+        >
+          <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
+          {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{qg}</span>}
+        </Button>
+      </li>
+    ))}
+
+    {/* Logout */}
+    <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+      <Button
+        onClick={handleLogout}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: isSidebarOpen ? '90%' : '50px',
+          backgroundColor: '#9A616D',
+          color: 'white',
+          fontWeight: 'bold',
+          textTransform: 'none',
+          borderRadius: 25,
+          padding: '12px 15px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+          transition: 'all 0.3s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#A47580'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = '#9A616D'}
+      >
+        <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
+        {isSidebarOpen && <span>Déconnexion</span>}
+      </Button>
+    </li>
+  </ul>
+</aside>
+
 
 <main
   style={{
@@ -764,7 +794,7 @@ const handleScanSuccess = (decodedText) => {
           {['Nom', 'Position', 'Numéro', 'QG', 'QR', 'Statut', 'Actions'].map((title) => (
             <TableCell
               key={title}
-              style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}
+              style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center', background: "linear-gradient(180deg, #4A2C2A, #9A616D)" }}
             >
               {title}
             </TableCell>
@@ -777,24 +807,136 @@ const handleScanSuccess = (decodedText) => {
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
           .map((contact) => (
             <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
-              <TableCell>{contact.name}</TableCell>
-              <TableCell>{contact.position}</TableCell>
-              <TableCell>{contact.number}</TableCell>
-              <TableCell style={{ fontStyle: 'italic' }}>{contact.qg}</TableCell>
-              <TableCell style={{ textAlign: 'center' }}>
-                <div id={`qr-${contact._id}`}>
-                  <QRCodeSVG value={contact._id} size={50} />
-                </div>
-              </TableCell>
-              <TableCell
-                style={{
-                  color: contact.presentToday ? '#16a34a' : '#dc2626',
-                  fontWeight: 'bold',
-                  textAlign: 'center',
-                }}
-              >
-                {contact.presentToday ? 'Présent' : 'Absent'}
-              </TableCell>
+<TableCell>
+  <div
+    style={{
+      padding: '6px 12px',
+      borderRadius: 12,
+           backgroundColor: '#fff7ed', // orange très clair pour numéro
+      color: '#78350f', // orange foncé pour texte
+      fontWeight: 600,
+      display: 'inline-block',
+      minWidth: 60,
+      textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+      transition: 'transform 0.2s',
+      cursor: 'default',
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+  >
+    {contact.name}
+  </div>
+</TableCell>
+             <TableCell>
+  <div
+    style={{
+      padding: '6px 12px',
+      borderRadius: 12,
+           backgroundColor: '#fff7ed', // orange très clair pour numéro
+      color: '#78350f', // orange foncé pour texte
+      display: 'inline-block',
+      minWidth: 60,
+      textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+      transition: 'transform 0.2s',
+      cursor: 'default',
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+  >
+    {contact.position}
+  </div>
+</TableCell>
+
+<TableCell>
+  <div
+    style={{
+      padding: '6px 12px',
+      borderRadius: 12,
+      backgroundColor: '#fff7ed', // orange très clair pour numéro
+      color: '#78350f', // orange foncé pour texte
+      fontWeight: 500,
+      display: 'inline-block',
+      minWidth: 60,
+      textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+      transition: 'transform 0.2s',
+      cursor: 'default',
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+  >
+    {contact.number}
+  </div>
+</TableCell>
+
+<TableCell>
+  <div
+    style={{
+      padding: '6px 12px',
+      borderRadius: 12,
+           backgroundColor: '#fff7ed', // orange très clair pour numéro
+      color: '#78350f', // orange foncé pour texte
+      fontWeight: 500,
+      fontStyle: 'italic',
+      display: 'inline-block',
+      minWidth: 60,
+      textAlign: 'center',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+      transition: 'transform 0.2s',
+      cursor: 'default',
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+  >
+    {contact.qg}
+  </div>
+</TableCell>
+
+            <TableCell style={{ textAlign: 'center' }}>
+  <div
+    style={{
+      display: 'inline-block',
+      padding: 8,
+      borderRadius: 12,
+           backgroundColor: '#fff7ed', // orange très clair pour numéro
+      color: '#78350f', // orange foncé pour texte
+      boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      cursor: 'pointer',
+    }}
+    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+  >
+    <QRCodeSVG value={contact._id} size={50} />
+  </div>
+</TableCell>
+
+             <TableCell style={{ textAlign: 'center' }}>
+  <span
+    style={{
+      display: 'inline-block',
+      padding: '6px 14px',
+      borderRadius: 20,
+      color: 'white',
+      fontWeight: 'bold',
+      background: contact.presentToday 
+        ? 'linear-gradient(135deg, #34d399, #16a34a)'  // vert dégradé
+        : 'linear-gradient(135deg, #f87171, #dc2626)', // rouge dégradé
+      boxShadow: contact.presentToday
+        ? '0 2px 6px rgba(22, 163, 74, 0.3)'
+        : '0 2px 6px rgba(220, 38, 38, 0.3)',
+      minWidth: 80,
+      textAlign: 'center',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      cursor: 'default',
+    }}
+  >
+    {contact.presentToday ? 'Présent' : 'Absent'}
+  </span>
+</TableCell>
+
               <TableCell>
                 <div
                   style={{
