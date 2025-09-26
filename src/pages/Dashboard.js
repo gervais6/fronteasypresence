@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import SearchIcon from '@mui/icons-material/Search';
+import { Chip } from "@mui/material";
+
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   TablePagination,  Tooltip
@@ -379,7 +381,8 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
 };
 
 // Dashboard
-const Dashboard = () => {
+const Dashboard = () => 
+  {
   const [contacts, setContacts] = useState([]);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isNewEntryModalOpen, setNewEntryModalOpen] = useState(false);
@@ -389,6 +392,8 @@ const Dashboard = () => {
   const [filterQG, setFilterQG] = useState('Tous');
   const [searchTerm, setSearchTerm] = useState("");
   const [isScannerOpen, setScannerOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(null);
+
 // Dans ton composant Dashboard, au début avec les autres useState
 const [page, setPage] = useState(0); // page courante
 const [rowsPerPage, setRowsPerPage] = useState(10); // nombre de lignes par page
@@ -556,12 +561,30 @@ const handleScanSuccess = (decodedText) => {
   const qgList = ['Tous', ...Array.from(new Set(contacts.map(c => c.qg)))];
 
   // Filtrer + calcul presentToday
-  const displayContacts = (filterQG === 'Tous' ? contacts : contacts.filter(c => c.qg === filterQG))
-    .filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.position.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map(c => {
-      const todayEntry = c.history?.find(h => h.date === today);
-      return { ...c, presentToday: todayEntry ? todayEntry.present : false };
-    });
+// Filtrer + calcul presentToday
+let displayContacts = (filterQG === 'Tous' ? contacts : contacts.filter(c => c.qg === filterQG))
+  .filter(c => 
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.position.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .map(c => {
+    const todayEntry = c.history?.find(h => h.date === today);
+    return { ...c, presentToday: todayEntry ? todayEntry.present : false };
+  });
+
+// Filtrer selon chip actif
+if (activeFilter) {
+  displayContacts = displayContacts.filter(c => {
+    if (activeFilter === 'Présents') return c.presentToday === true;
+    if (activeFilter === 'Absents') return c.presentToday === false;
+    if (activeFilter === 'QG A') return c.qg === 'A';
+    if (activeFilter === 'QG B') return c.qg === 'B';
+        if (activeFilter === 'Nom') return c.qg === 'B';
+
+    return true;
+  });
+}
+
 
   return (
     <>
@@ -575,8 +598,9 @@ const handleScanSuccess = (decodedText) => {
     right: 0,
     zIndex: 100,
     display: "flex",
+    flexDirection: "column", // <- pour empiler recherche + chips
     flexWrap: "wrap",
-    alignItems: "",
+    alignItems: "flex-start",
     padding: "8px 20px",
     backgroundColor: "#fff",
     boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
@@ -587,74 +611,92 @@ const handleScanSuccess = (decodedText) => {
   className="main-header"
 >
   {/* Barre de recherche */}
-
-  {/* Boutons */}
-<div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    padding: "6px 12px",
-    borderRadius: 25,
-    background: "linear-gradient(135deg, #4A2C2A, #9A616D)",
-    gap: 8,
-    
-  }}
->
-  <SearchIcon style={{ marginRight: 8, color: "#fff", fontSize: 28 }} />
-  <TextField
-    placeholder="Rechercher..."
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-    variant="outlined"
-    size="small"
+  <div
     style={{
-      backgroundColor: "rgba(255,255,255,0.9)",
-      borderRadius: 20,
-      padding: "0 10px",
-      width: 1000, // <- largeur fixe pour retrouver la taille d’avant
-    }}
-  />
-  <Button
-    variant="contained"
-    onClick={() => setNewEntryModalOpen(true)}
-    style={{
-      background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
-      color: "white",
-      borderRadius: 20,
-      padding: "6px 16px",
-      textTransform: "none",
+      display: "flex",
+      alignItems: "center",
+      padding: "6px 12px",
+      borderRadius: 25,
+      background: "linear-gradient(135deg, #4A2C2A, #9A616D)",
+      gap: 8,
+      width: "100%",
     }}
   >
-    Ajouter
-  </Button>
-  <Button
-    variant="contained"
-    onClick={() => setScannerOpen(true)}
+    <SearchIcon style={{ marginRight: 8, color: "#fff", fontSize: 28 }} />
+    <TextField
+      placeholder="Rechercher..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      size="small"
+      style={{
+        backgroundColor: "rgba(255,255,255,0.9)",
+        borderRadius: 20,
+        padding: "0 10px",
+        flex: 1, // <- s'adapte à l'espace
+      }}
+    />
+    <Button
+      variant="contained"
+      onClick={() => setNewEntryModalOpen(true)}
+      style={{
+        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+        color: "white",
+        borderRadius: 20,
+        padding: "6px 16px",
+        textTransform: "none",
+      }}
+    >
+      Ajouter
+    </Button>
+    <Button
+      variant="contained"
+      onClick={() => setScannerOpen(true)}
+      style={{
+        background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
+        color: "white",
+        borderRadius: 20,
+        padding: "6px 16px",
+        textTransform: "none",
+      }}
+    >
+      Scanner
+    </Button>
+  </div>
+
+  {/* Chips de recherche */}
+  <div
     style={{
-      background: "linear-gradient(180deg, #4A2C2A, #9A616D)",
-      color: "white",
-      borderRadius: 20,
-      padding: "6px 16px",
-      textTransform: "none",
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 6,
     }}
   >
-    Scanner
-  </Button>
-</div>
+    { ["QG ","Présents", "Absents", "Non", "Numero", "Position",].map((filter) => (
+      <Chip
+        key={filter}
+        label={filter}
+        onClick={() => setActiveFilter(filter)} // ton state pour filtrer
+        color={activeFilter === filter ? "primary" : "default"}
+        variant={activeFilter === filter ? "filled" : "outlined"}
+       style={{
+        background: activeFilter === filter 
+          ? "linear-gradient(180deg, #4A2C2A, #9A616D)" // ✅ comme "Scanner" et "Ajouter"
+          : "rgba(0,0,0,0.05)", 
+        color: activeFilter === filter ? "#fff" : "#333",
+        borderRadius: 20,
+        padding: "6px 16px",
+        fontWeight: 500,
+        cursor: "pointer",
+      }}
 
+      />
+    ))}
+  </div>
 
   {/* CSS */}
   <style>
     {`
-      .header-buttons {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        margin-left: 15px;
-      }
-
-      /* Masquer le header sur mobile */
       @media (max-width: 600px) {
         .main-header {
           display: none !important;
@@ -767,7 +809,7 @@ const handleScanSuccess = (decodedText) => {
 <main
   style={{
     marginLeft: isSidebarOpen ? 220 : 70,
-    marginTop: 80,
+    marginTop: 150,
     padding: 20,
     transition: 'margin-left 0.3s ease',
     minHeight: '100vh',
