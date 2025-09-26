@@ -794,7 +794,7 @@ const handleScanSuccess = (decodedText) => {
           {['Nom', 'Position', 'Numéro', 'QG', 'QR', 'Statut', 'Actions'].map((title) => (
             <TableCell
               key={title}
-              style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center', background: "linear-gradient(180deg, #4A2C2A, #9A616D)" }}
+              style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center',  }}
             >
               {title}
             </TableCell>
