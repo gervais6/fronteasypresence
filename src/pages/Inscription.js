@@ -1,7 +1,7 @@
 import React, { useState } from "react"; 
 import { useNavigate } from 'react-router-dom'; 
 import { TextField, Button, InputAdornment, IconButton } from '@mui/material'; 
-import { Person, Email, Visibility, VisibilityOff } from '@mui/icons-material'; 
+import { Person, Email, Phone, Visibility, VisibilityOff, Work, Apartment } from '@mui/icons-material'; 
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -10,12 +10,15 @@ const InscrireAdmin = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [number, setNumber] = useState('');          // numéro
+    const [position, setPosition] = useState('');      // poste/position
+    const [qg, setQG] = useState('');                 // QG
     const [showPassword, setShowPassword] = useState(false); 
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !number || !position || !qg) {
             toast.error("Tous les champs sont requis.", { autoClose: 1000, position: toast.POSITION.BOTTOM_CENTER });
             return;
         }
@@ -23,12 +26,11 @@ const InscrireAdmin = () => {
         try {
             const response = await axios.post(
                 'http://localhost:8000/api/auth/register-admin',
-
-                {  name, email, password }
+                { name, email, password, number, position, qg } // ajout du qg
             );
 
             toast.success('Admin créé avec succès !', { autoClose: 1000 });
-            setName(''); setEmail(''); setPassword('');
+            setName(''); setEmail(''); setPassword(''); setNumber(''); setPosition(''); setQG('');
             navigate('/login');
 
         } catch (error) {
@@ -100,6 +102,57 @@ const InscrireAdmin = () => {
                                                                 <IconButton onClick={() => setShowPassword(!showPassword)} style={{ padding: 0 }}>
                                                                     {showPassword ? <VisibilityOff style={{ color: 'black' }} /> : <Visibility style={{ color: 'black' }} />}
                                                                 </IconButton>
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                    className="mb-4"
+                                                    style={{ borderRadius: '20px' }}
+                                                />
+                                                <TextField
+                                                    fullWidth
+                                                    variant="outlined"
+                                                    placeholder="Numéro de téléphone"
+                                                    value={number}
+                                                    onChange={(e) => setNumber(e.target.value)}
+                                                    required
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <Phone />
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                    className="mb-4"
+                                                    style={{ borderRadius: '20px' }}
+                                                />
+                                                <TextField
+                                                    fullWidth
+                                                    variant="outlined"
+                                                    placeholder="Position / Poste"
+                                                    value={position}
+                                                    onChange={(e) => setPosition(e.target.value)}
+                                                    required
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <Work />
+                                                            </InputAdornment>
+                                                        ),
+                                                    }}
+                                                    className="mb-4"
+                                                    style={{ borderRadius: '20px' }}
+                                                />
+                                                <TextField
+                                                    fullWidth
+                                                    variant="outlined"
+                                                    placeholder="QG"
+                                                    value={qg}
+                                                    onChange={(e) => setQG(e.target.value)}
+                                                    required
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <Apartment />
                                                             </InputAdornment>
                                                         ),
                                                     }}

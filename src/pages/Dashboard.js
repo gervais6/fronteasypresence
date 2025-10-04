@@ -25,6 +25,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import { jsPDF } from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
 
+const API_AUTH = "http://localhost:8000/api/auth";
+const API_PRESENCES = "http://localhost:8000/api/presences";
 const API_DELETE = 'http://localhost:8000/api/auth/users';
 const API_USERS = 'http://localhost:8000/api/auth/users';
 const API_MEMBRES = 'http://localhost:8000/api/auth/register-user';
@@ -189,14 +191,15 @@ const exportQrToPdf = (contact) => {
 
 
 // Modal pour ajouter/modifier un utilisateur
+// Modal pour ajouter/modifier un utilisateur
 const NewEntryModal = ({ open, onClose, onSave, contact }) => {
-  const [name, setName] = useState(contact ? contact.name : '');
-  const [position, setPosition] = useState(contact ? contact.position : '');
-  const [number, setNumber] = useState(contact ? contact.number : '');
-  const [qg, setQG] = useState(contact ? contact.qg : '');
-  const [email, setEmail] = useState(contact ? contact.email : '');
+  const [name, setName] = useState(contact?.name || '');
+  const [position, setPosition] = useState(contact?.position || '');
+  const [number, setNumber] = useState(contact?.number || '');
+  const [qg, setQG] = useState(contact?.qg || '');
+  const [email, setEmail] = useState(contact?.email || '');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState(contact ? (contact.role || 'employe') : 'employe');
+  const [role, setRole] = useState(contact?.role || 'employe');
 
   useEffect(() => {
     if (contact) {
@@ -218,59 +221,58 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
     }
   }, [contact, open]);
 
-const handleSave = async () => {
-  // Vérification des champs obligatoires pour tous les utilisateurs
-  if (!name || !position || !number || !qg) {
-    toast.error('Nom, Position, Numéro et QG sont requis');
-    return;
-  }
-
-  const isNew = !(contact && contact._id);
-
-  // Pour les nouveaux utilisateurs, email, mot de passe et rôle sont obligatoires
-  if (isNew && (!email || !password || !role)) {
-    toast.error('Email, mot de passe et rôle requis pour créer un utilisateur');
-    return;
-  }
-
-  // Préparer l'objet utilisateur pour l'API
-  const userPayload = {
-    name,
-    position,
-    number,
-    qg,
-    role: role || 'employe'
-  };
-
-  // Ajouter email et password seulement si c'est un nouvel utilisateur
-  if (isNew) {
-    userPayload.email = email;
-    userPayload.password = password;
-  }
-
-  try {
-    if (isNew) {
-      // Création d'un nouvel utilisateur
-      const response = await axios.post('http://localhost:8000/api/auth/register-user', userPayload);
-      toast.success(response.data.message);
-      userPayload._id = response.data.userId; // récupérer l'id du backend
-    } else {
-      // Modification d'un utilisateur existant
-      const response = await axios.put(`http://localhost:8000/api/auth/update-user/${contact._id}`, userPayload);
-      toast.success(response.data.message);
-      userPayload._id = contact._id;
+  const handleSave = async () => {
+    if (!name || !position || !number || !qg) {
+      toast.error('Nom, Position, Numéro et QG sont requis');
+      return;
     }
 
-    // Mettre à jour l'état local
-    onSave(userPayload);
-    onClose();
-  } catch (error) {
-    console.error('Erreur dans handleSaveNewEntry:', error);
-    toast.error(error.response?.data?.message || 'Erreur inconnue');
-  }
-};
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Token manquant, veuillez vous reconnecter !');
+      return;
+    }
 
+    const payload = { name, email, password, qg, position, number, role };
 
+    // Si c'est un nouvel utilisateur, ajouter email et password
+    if (!contact?._id) {
+      if (!email || !password) {
+        toast.error('Email et mot de passe requis pour un nouvel utilisateur');
+        return;
+      }
+      payload.email = email;
+      payload.password = password;
+      payload.role = role; // <- assure-toi que role est bien dans le payload
+    }
+
+    try {
+      let updatedUser = {};
+
+      if (!contact?._id) {
+        // Création
+        const res = await axios.post('http://localhost:8000/api/auth/register-user', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.success(res.data.message || 'Utilisateur créé !');
+        updatedUser = { ...payload, _id: res.data.userId };
+      } else {
+        // Modification
+        await axios.put(`http://localhost:8000/api/auth/update-user/${contact._id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        toast.success('Utilisateur modifié !');
+        updatedUser = { ...payload, _id: contact._id };
+      }
+
+      // Mise à jour locale
+      onSave(updatedUser);
+      onClose();
+    } catch (err) {
+      console.error('Erreur handleSaveNewEntry:', err);
+      toast.error(err.response?.data?.message || 'Erreur inconnue');
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ style: { borderRadius: 20, padding: 20 } }}>
@@ -289,7 +291,7 @@ const handleSave = async () => {
           )}
           <div>
             <label style={{ fontSize: 13, color: '#444', marginRight: 8 }}>Rôle</label>
-            <Select value={role} onChange={(e) => setRole(e.target.value)} size="small"  fullWidth variant ='outlined'>
+            <Select value={role} onChange={(e) => setRole(e.target.value)} size="small" fullWidth variant='outlined'>
               <MenuItem value="admin">admin</MenuItem>
               <MenuItem value="employe">employé</MenuItem>
             </Select>
@@ -307,6 +309,8 @@ const handleSave = async () => {
     </Dialog>
   );
 };
+
+
 
 // Modal pour afficher l'historique
 const HistoryModal = ({ open, onClose, contact }) => {
@@ -442,65 +446,59 @@ const Dashboard = () => {
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Synchronisation des actions en attente et chargement des contacts
-  useEffect(() => {
-    const syncPendingActions = async () => {
-      if (!navigator.onLine) return;
-      const pending = JSON.parse(localStorage.getItem('pendingActions') || '[]');
-      for (const action of pending) {
-        try {
-          if (action.type === 'save') {
-            await axios.post(API_MEMBRES, action.data, {
-              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-            });
-          } else if (action.type === 'update') {
-            await axios.put(`${API_MEMBRES}/${action.data._id}`, action.data, {
-              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-            });
-          } else if (action.type === 'delete') {
-            await axios.delete(`${API_MEMBRES}/${action.data}`, {
-              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-            });
-          } else if (action.type === 'scan') {
-            await axios.post(
-              action.data.isCompany ? `${API_MEMBRES}/scan-company` : `${API_MEMBRES}/scan`,
-              { id: action.data.id, userId: localStorage.getItem('userId'), memberId: action.data.id },
-              { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-            );
-          }
-        } catch (err) {
-          console.warn('Sync échouée pour', action, err);
-        }
-      }
-      localStorage.removeItem('pendingActions');
-    };
-
-    const fetchContacts = async () => {
-  try {
-    await syncPendingActions();
-    const res = await axios.get(API_USERS, { // 👈 utiliser API_USERS
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
-    setContacts(res.data);
-    localStorage.setItem('contacts', JSON.stringify(res.data));
-  } catch (error) {
-    console.error('Erreur fetchContacts:', error);
-    const stored = localStorage.getItem('contacts');
-    if (stored) setContacts(JSON.parse(stored));
-  }
+const findUserById = (id) => {
+  if (!contacts || contacts.length === 0) return null;
+  return contacts.find(c => c._id === id) || null;
 };
 
-    fetchContacts();
-  }, []);
+
+useEffect(() => {
+  const fetchContactsAndPresences = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const contactsRes = await axios.get(API_USERS, { headers: { Authorization: `Bearer ${token}` } });
+      const contactsData = contactsRes.data || [];
+
+      // Mettre à jour contacts
+      setContacts(contactsData);
+      localStorage.setItem('contacts', JSON.stringify(contactsData));
+
+      // Charger les présences du jour
+      const today = new Date().toISOString().split('T')[0];
+      const presencesRes = await axios.get(`${API_PRESENCES}?date=${today}`, { headers: { Authorization: `Bearer ${token}` } });
+      const presencesData = presencesRes.data || [];
+
+      // Fusionner présences dans contacts
+      const merged = contactsData.map(user => {
+        const presence = presencesData.find(p => p.userId?._id === user._id);
+        return {
+          ...user,
+          history: presence ? [{ date: today, present: presence.present, time: presence.time || '--:--' }] : []
+        };
+      });
+
+      setContacts(merged);
+      localStorage.setItem('contacts', JSON.stringify(merged));
+    } catch (err) {
+      console.error("Erreur fetchContactsAndPresences:", err);
+      const stored = localStorage.getItem('contacts');
+      if (stored) setContacts(JSON.parse(stored));
+    }
+  };
+
+  fetchContactsAndPresences();
+}, []);
+
+
+
+
+
 
 // Fonction utilitaire : sauvegarde côté Auth
 
 
 
-const API_AUTH = "http://localhost:8000/api/auth";
 
-// Fonction utilitaire pour créer un user côté Auth
-// À mettre en haut de ton fichier, avant handleSaveNewEntry
 const registerAuthUser = async (newEntry) => {
   const payload = {
     name: newEntry.name,
@@ -515,76 +513,62 @@ const registerAuthUser = async (newEntry) => {
   return res.data.userId; // renvoie l'ID créé par MongoDB
 };
 
-
 // À mettre DANS le composant Dashboard
 const handleSaveNewEntry = async (newEntry) => {
   try {
-    let userId = newEntry._id;
-
-    // --- 1️⃣ Création utilisateur côté Auth si nécessaire ---
-    if (!userId && newEntry.email && newEntry.password) {
-      if (navigator.onLine) {
-        try {
-          const authResp = await axios.post(`${AUTH_BASE}/register-user`, {
-            name: newEntry.name,
-            email: newEntry.email,
-            password: newEntry.password,
-            role: newEntry.role || 'employe',
-            phone: newEntry.phone,
-            qg: newEntry.qg,
-          });
-
-          userId = authResp.data.userId; // récupérer l'ID côté serveur
-          toast.success('Utilisateur créé côté Auth !');
-        } catch (err) {
-          console.error("Erreur création Auth:", err.response?.data || err.message);
-          savePendingAction({ type: 'save', data: newEntry });
-          toast.error('Échec création côté Auth, sauvegarde locale.');
-          return;
-        }
-      } else {
-        savePendingAction({ type: 'save', data: newEntry });
-        toast.info('Hors ligne : sauvegarde locale.');
-        return;
-      }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error("Token manquant, veuillez vous reconnecter !");
+      return;
     }
 
-    // --- 2️⃣ Préparer le payload pour Membres ---
-    const membrePayload = {
-      ...newEntry,
-      _id: userId,
-      role: newEntry.role || 'employe',
-      phone: newEntry.phone,
+    const isNew = !newEntry._id;
+
+    // Préparer les données à envoyer à l'API
+    const payload = {
+      name: newEntry.name,
+      position: newEntry.position,
+      number: newEntry.number,
       qg: newEntry.qg,
+      role: newEntry.role || "employe",
     };
 
-    // --- 3️⃣ Mettre à jour localStorage ET state React ---
-    setContacts((prev) => {
-      const updated = [...prev.filter(c => c._id !== userId), membrePayload];
-      localStorage.setItem('contacts', JSON.stringify(updated));
+    if (isNew) {
+      // Ajouter email et password pour création
+      payload.email = newEntry.email;
+      payload.password = newEntry.password;
+    }
+
+    let response;
+    if (isNew) {
+      // Création utilisateur
+      response = await axios.post(
+        "http://localhost:8000/api/auth/register-user",
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      payload._id = response.data.userId;
+      toast.success("Utilisateur ajouté !");
+    } else {
+      // Modification utilisateur
+      response = await axios.put(
+        `http://localhost:8000/api/auth/update-user/${newEntry._id}`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      payload._id = newEntry._id;
+      toast.success("Utilisateur mis à jour !");
+    }
+
+    // Mise à jour locale dans le state contacts
+    setContacts(prev => {
+      const updated = [...prev.filter(c => c._id !== payload._id), payload];
+      localStorage.setItem("contacts", JSON.stringify(updated));
       return updated;
     });
 
-    // --- 4️⃣ Sauvegarde côté API Membres ---
-    if (navigator.onLine) {
-      const config = { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } };
-
-      if (!newEntry._id) {
-        // Création
-        await axios.post(`${API_MEMBRES}`, membrePayload, config);
-        toast.success('Membre ajouté !');
-      } else {
-        // Mise à jour
-        await axios.put(`${API_MEMBRES}/${userId}`, membrePayload, config);
-        toast.success('Membre mis à jour !');
-      }
-    } else {
-      savePendingAction({ type: newEntry._id ? 'update' : 'save', data: membrePayload });
-      toast.info('Hors ligne : action sauvegardée localement.');
-    }
   } catch (err) {
-    console.error("Erreur dans handleSaveNewEntry:", err);
-
+    console.error("Erreur handleSaveNewEntry:", err);
     if (err.response) {
       toast.error(`Erreur API: ${err.response.data.message || "inconnue"}`);
     } else if (err.request) {
@@ -594,6 +578,11 @@ const handleSaveNewEntry = async (newEntry) => {
     }
   }
 };
+
+
+
+
+
 
 
 
@@ -616,215 +605,145 @@ const handleDeleteMember = async (id) => {
 };
 
   // Bascule de la présence (pour les admins)
-  const handleTogglePresence = (id) => {
-    const updated = contacts.map((c) => {
-      if (c._id === id) {
-        const todayEntryIndex = c.history?.findIndex((h) => h.date === today);
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-        if (todayEntryIndex >= 0 && c.history[todayEntryIndex].present) {
-          toast.info(`${c.name} est déjà marqué présent aujourd'hui.`);
-          return c;
-        }
+// Toggle manuel d’un membre (admin)
+const handleTogglePresence = async (memberId) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
 
-        const updatedHistory = todayEntryIndex >= 0
-          ? [...c.history]
-          : c.history
-            ? [...c.history, { date: today, present: true, time: timeStr }]
-            : [{ date: today, present: true, time: timeStr }];
+  const user = findUserById(memberId);
+  if (!user) return toast.error("Utilisateur non trouvé");
 
-        if (todayEntryIndex >= 0) {
-          updatedHistory[todayEntryIndex] = { ...updatedHistory[todayEntryIndex], present: true, time: timeStr };
-        }
+  // MAJ locale (optimistic)
+  const todayIndex = user.history?.findIndex(h => h.date === today);
+  let updatedHistory;
+  if (todayIndex >= 0) {
+    updatedHistory = [...user.history];
+    updatedHistory[todayIndex] = {
+      ...updatedHistory[todayIndex],
+      present: !updatedHistory[todayIndex].present,
+      time: timeStr
+    };
+  } else {
+    updatedHistory = [...(user.history || []), { date: today, present: true, time: timeStr }];
+  }
 
-        return { ...c, history: updatedHistory };
+  setContacts(prev => prev.map(c => c._id === memberId ? { ...c, history: updatedHistory } : c));
+
+  try {
+    await axios.put(`${API_PRESENCES}/${memberId}`, {
+      date: today,
+      present: true,
+      time: timeStr
+    }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+
+    toast.success("Présence mise à jour !");
+  } catch (err) {
+    toast.error("Erreur mise à jour présence");
+    console.error(err);
+  }
+};
+
+
+
+
+
+
+    // Récupération des contacts au chargement
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('http://localhost:8000/api/auth/users', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setContacts(response.data);
+        localStorage.setItem('contacts', JSON.stringify(response.data));
+      } catch (err) {
+        console.error('Erreur fetch contacts:', err);
       }
-      return c;
-    });
-
-    setContacts(updated);
-    localStorage.setItem('contacts', JSON.stringify(updated));
-
-    const updatedMember = updated.find((c) => c._id === id);
-    if (navigator.onLine) {
-      axios.put(`${API_MEMBRES}/${id}`, updatedMember, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-      }).catch(() => savePendingAction({ type: 'update', data: updatedMember }));
-    } else {
-      savePendingAction({ type: 'update', data: updatedMember });
-    }
-    toast.success(`${updatedMember.name} marqué présent !`);
-  };
+    };
+    fetchContacts();
+  }, []);
 
   // Gestion du scan QR
-  const handleScanSuccess = async (decodedText) => {
+  // Scan QR code
+const handleScanSuccess = async (decodedText) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+
+  const user = findUserById(decodedText);
+  if (!user) return toast.error("Utilisateur non trouvé ou contacts non chargés");
+
+  try {
+    // POST présence côté API
+    await axios.post(API_PRESENCES, {
+      userId: user._id,
+      date: today,
+      present: true,
+      time: timeStr
+    }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+
+    // MAJ locale
+    const newHistory = [...(user.history || []), { date: today, present: true, time: timeStr }];
+    const updatedUser = { ...user, history: newHistory };
+
+    setContacts(prev => prev.map(c => c._id === user._id ? updatedUser : c));
+
+    toast.success(`${user.name} marqué présent`);
+  } catch (err) {
+    toast.error("Erreur enregistrement présence");
+    console.error(err);
+  }
+};
+
+
+
+
+
+
+
+useEffect(() => {
+  const fetchContacts = async () => {
     try {
-      if (decodedText === COMPANY_ID) {
-        const userId = localStorage.getItem('userId');
-        const memberId = localStorage.getItem('memberId');
-        const userRole = localStorage.getItem('userRole');
-
-        if (!userId || !memberId) {
-          toast.error('Veuillez vous connecter en tant qu\'employé.');
-          return;
-        }
-
-        if (userRole !== 'employe') {
-          toast.error('Seuls les employés peuvent scanner le QR code de l\'entreprise.');
-          return;
-        }
-
-        const now = new Date();
-        const hour = now.getHours();
-        if (hour < SCAN_START_HOUR || hour > SCAN_END_HOUR) {
-          toast.error(`Scan autorisé seulement entre ${SCAN_START_HOUR}h et ${SCAN_END_HOUR}h !`);
-          return;
-        }
-
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        const updated = contacts.map((c) => {
-          if (c._id === memberId) {
-            const todayEntryIndex = c.history?.findIndex((h) => h.date === today);
-            if (todayEntryIndex >= 0 && c.history[todayEntryIndex].present) {
-              toast.info(`${c.name} est déjà marqué présent aujourd'hui.`);
-              return c;
-            }
-
-            const updatedHistory = todayEntryIndex >= 0
-              ? [...c.history]
-              : c.history
-                ? [...c.history, { date: today, present: true, time: timeStr }]
-                : [{ date: today, present: true, time: timeStr }];
-
-            if (todayEntryIndex >= 0) {
-              updatedHistory[todayEntryIndex] = { ...updatedHistory[todayEntryIndex], present: true, time: timeStr };
-            }
-
-            return { ...c, history: updatedHistory };
-          }
-          return c;
-        });
-
-        setContacts(updated);
-        localStorage.setItem('contacts', JSON.stringify(updated));
-
-        if (navigator.onLine) {
-          const response = await axios.post(
-            `${API_MEMBRES}/scan-company`,
-            { userId, memberId },
-            { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-          );
-
-          if (response.status === 200) {
-            setContacts((prev) =>
-              prev.map((c) => (c._id === memberId ? { ...c, history: response.data.membre.history } : c))
-            );
-            localStorage.setItem('contacts', JSON.stringify(updated));
-            toast.success(response.data.message || 'Présence enregistrée avec succès !');
-          }
-        } else {
-          savePendingAction({
-            type: 'scan',
-            data: { id: memberId, timestamp: new Date().toISOString(), isCompany: true },
-          });
-          toast.info('Scan enregistré pour synchronisation ultérieure.');
-        }
-      } else if (decodedText.match(/^[a-fA-F0-9]{24}$/)) {
-        const memberId = decodedText;
-        const userRole = localStorage.getItem('userRole');
-
-        if (userRole !== 'admin') {
-          toast.error('Seuls les administrateurs peuvent scanner les QR codes des membres.');
-          return;
-        }
-
-        const updated = contacts.map((c) => {
-          if (c._id === memberId) {
-            const todayEntryIndex = c.history?.findIndex((h) => h.date === today);
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-            if (todayEntryIndex >= 0 && c.history[todayEntryIndex].present) {
-              toast.info(`${c.name} est déjà marqué présent aujourd'hui.`);
-              return c;
-            }
-
-            const updatedHistory = todayEntryIndex >= 0
-              ? [...c.history]
-              : c.history
-                ? [...c.history, { date: today, present: true, time: timeStr }]
-                : [{ date: today, present: true, time: timeStr }];
-
-            if (todayEntryIndex >= 0) {
-              updatedHistory[todayEntryIndex] = { ...updatedHistory[todayEntryIndex], present: true, time: timeStr };
-            }
-
-            return { ...c, history: updatedHistory };
-          }
-          return c;
-        });
-
-        setContacts(updated);
-        localStorage.setItem('contacts', JSON.stringify(updated));
-
-        const updatedMember = updated.find((c) => c._id === memberId);
-        if (navigator.onLine) {
-          await axios.put(`${API_MEMBRES}/${memberId}`, updatedMember, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          });
-          toast.success(`${updatedMember.name} marqué présent !`);
-        } else {
-          savePendingAction({ type: 'update', data: updatedMember });
-          toast.info('Scan enregistré pour synchronisation ultérieure.');
-        }
-      } else {
-        toast.error('QR code non reconnu !');
-      }
-
-      const beepSound = new Audio('/beep.mp3');
-      beepSound.play().catch(() => {});
-      if (navigator.vibrate) navigator.vibrate(200);
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Erreur lors du scan';
-      toast.error(errorMessage);
-      if (!navigator.onLine) {
-        savePendingAction({
-          type: 'scan',
-          data: {
-            id: decodedText === COMPANY_ID ? localStorage.getItem('memberId') : decodedText,
-            timestamp: new Date().toISOString(),
-            isCompany: decodedText === COMPANY_ID,
-          },
-        });
-      }
+      const token = localStorage.getItem("token");
+      const res = await axios.get("http://localhost:8000/api/auth/get-users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setContacts(res.data);
+    } catch (err) {
+      console.error("Erreur fetchContacts:", err);
     }
   };
+  fetchContacts();
+}, []);
 
-  // Liste des QG
-  const qgList = ['Tous', ...Array.from(new Set(contacts.map((c) => c.qg).filter(Boolean)))];
+// Liste des QG
+const qgList = ["Tous", ...Array.from(new Set(contacts.map((c) => c.qg).filter(Boolean)))];
 
-  // Filtrage des contacts affichés
-  let displayContacts = (filterQG === 'Tous' ? contacts : contacts.filter((c) => c.qg === filterQG))
-    .filter(
-      (c) =>
-        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.position?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .map((c) => {
-      const todayEntry = c.history?.find((h) => h.date === today);
-      return { ...c, presentToday: todayEntry ? todayEntry.present : false };
-    });
+// Filtrage des contacts
+let displayContacts = (filterQG === "Tous" ? contacts : contacts.filter((c) => c.qg === filterQG))
+  .filter(
+    (c) =>
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.position?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  .map((c) => {
+    const todayEntry = c.history?.find((h) => h.date.split("T")[0] === today);
+    return { ...c, presentToday: todayEntry ? todayEntry.present : false };
+  });
 
-  if (activeFilter) {
-    displayContacts = displayContacts.filter((c) => {
-      if (activeFilter === 'Présents') return c.presentToday === true;
-      if (activeFilter === 'Absents') return c.presentToday === false;
-      if (activeFilter === 'QG A') return c.qg === 'A';
-      if (activeFilter === 'QG B') return c.qg === 'B';
-      return true;
-    });
-  }
+if (activeFilter && activeFilter !== "Tous") {
+  displayContacts = displayContacts.filter((c) => {
+    if (activeFilter === "Présents") return c.presentToday === true;
+    if (activeFilter === "Absents") return c.presentToday === false;
+    if (activeFilter === "QG A") return c.qg === "A";
+    if (activeFilter === "QG B") return c.qg === "B";
+    return true;
+  });
+}
 
   return (
     <>
@@ -900,7 +819,7 @@ const handleDeleteMember = async (id) => {
             </Button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-            {['Présents', 'Absents', 'QG A', 'QG B'].map((filter) => (
+            {['tous','Présents', 'Absents'].map((filter) => (
               <Chip
                 key={filter}
                 label={filter}
@@ -1091,6 +1010,7 @@ const handleDeleteMember = async (id) => {
                 </TableRow>
               </TableHead>
               <TableBody>
+                
                 {displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((contact) => (
                   <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
                     <TableCell>
