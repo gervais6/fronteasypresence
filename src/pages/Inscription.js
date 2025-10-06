@@ -25,7 +25,7 @@ const InscrireAdmin = () => {
 
         try {
             const response = await axios.post(
-                'http://localhost:8000/api/auth/register-admin',
+                'https://backendeasypresence.onrender.com/api/auth/register-admin',
                 { name, email, password, number, position, qg } // ajout du qg
             );
 

@@ -25,12 +25,12 @@ import 'react-toastify/dist/ReactToastify.css';
 import { jsPDF } from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
 
-const API_AUTH = "http://localhost:8000/api/auth";
-const API_PRESENCES = "http://localhost:8000/api/presences";
-const API_DELETE = 'http://localhost:8000/api/auth/users';
-const API_USERS = 'http://localhost:8000/api/auth/users';
-const API_MEMBRES = 'http://localhost:8000/api/auth/register-user';
-const AUTH_BASE = 'http://localhost:8000/api/auth';
+const API_AUTH = "https://backendeasypresence.onrender.com/api/auth";
+const API_PRESENCES = "https://backendeasypresence.onrender.com/api/presences";
+const API_DELETE = 'https://backendeasypresence.onrender.com/api/auth/users';
+const API_USERS = 'https://backendeasypresence.onrender.com/api/auth/users';
+const API_MEMBRES = 'https://backendeasypresence.onrender.com/api/auth/register-user';
+const AUTH_BASE = 'https://backendeasypresence.onrender.com/api/auth';
 const COMPANY_ID = localStorage.getItem('companyId') || 'company_123'; // ID de l'entreprise, configurable via localStorage
 const SCAN_START_HOUR = 7; // Heure de début pour le scan
 const SCAN_END_HOUR = 19; // Heure de fin pour le scan
@@ -251,14 +251,14 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
 
       if (!contact?._id) {
         // Création
-        const res = await axios.post('http://localhost:8000/api/auth/register-user', payload, {
+        const res = await axios.post('https://backendeasypresence.onrender.com/api/auth/register-user', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         toast.success(res.data.message || 'Utilisateur créé !');
         updatedUser = { ...payload, _id: res.data.userId };
       } else {
         // Modification
-        await axios.put(`http://localhost:8000/api/auth/update-user/${contact._id}`, payload, {
+        await axios.put(`https://backendeasypresence.onrender.com/api/auth/update-user/${contact._id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         toast.success('Utilisateur modifié !');
@@ -509,7 +509,7 @@ const registerAuthUser = async (newEntry) => {
     qg: newEntry.qg,
   };
 
-  const res = await axios.post("http://localhost:8000/api/auth/register-user", payload);
+  const res = await axios.post("https://backendeasypresence.onrender.com/api/auth/register-user", payload);
   return res.data.userId; // renvoie l'ID créé par MongoDB
 };
 
@@ -543,7 +543,7 @@ const handleSaveNewEntry = async (newEntry) => {
     if (isNew) {
       // Création utilisateur
       response = await axios.post(
-        "http://localhost:8000/api/auth/register-user",
+        "https://backendeasypresence.onrender.com/api/auth/register-user",
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -552,7 +552,7 @@ const handleSaveNewEntry = async (newEntry) => {
     } else {
       // Modification utilisateur
       response = await axios.put(
-        `http://localhost:8000/api/auth/update-user/${newEntry._id}`,
+        `https://backendeasypresence.onrender.com/api/auth/update-user/${newEntry._id}`,
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -655,7 +655,7 @@ const handleTogglePresence = async (memberId) => {
     const fetchContacts = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:8000/api/auth/users', {
+        const response = await axios.get('https://backendeasypresence.onrender.com/api/auth/users', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setContacts(response.data);
@@ -709,7 +709,7 @@ useEffect(() => {
   const fetchContacts = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:8000/api/auth/get-users", {
+      const res = await axios.get("https://backendeasypresence.onrender.com/api/auth/get-users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setContacts(res.data);

@@ -96,7 +96,7 @@ const ScanEntreprise = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:8000/api/scan/scan-company",
+        "https://backendeasypresence.onrender.com/api/scan/scan-company",
         { userId, qrCodeEntreprise: scannedData },
         { headers: { Authorization: `Bearer ${token}` } }
       );
