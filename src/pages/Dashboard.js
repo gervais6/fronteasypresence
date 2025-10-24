@@ -275,38 +275,85 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ style: { borderRadius: 20, padding: 20 } }}>
-      <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
-        {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
-      </DialogTitle>
-      <DialogContent style={{ paddingTop: 10 }}>
-        <Stack spacing={2}>
-          <TextField label="Nom complet" value={name} onChange={(e) => setName(e.target.value)} fullWidth variant="outlined" />
-          <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth variant="outlined" />
-          <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth variant="outlined" />
-          <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth variant="outlined" />
-          <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth variant="outlined" />
-          {!contact && (
-            <TextField label="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth variant="outlined" type="password" />
-          )}
-          <div>
-            <label style={{ fontSize: 13, color: '#444', marginRight: 8 }}>Rôle</label>
-            <Select value={role} onChange={(e) => setRole(e.target.value)} size="small" fullWidth variant='outlined'>
-              <MenuItem value="admin">admin</MenuItem>
-              <MenuItem value="employe">employé</MenuItem>
-            </Select>
-          </div>
-        </Stack>
-      </DialogContent>
-      <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
-        <Button onClick={onClose} style={{ backgroundColor: '#9A616D', color: 'white', borderRadius: 12, padding: '8px 20px', fontWeight: 'bold', textTransform: 'none', marginRight: 10 }}>
-          Annuler
-        </Button>
-        <Button onClick={handleSave} style={{ background: 'linear-gradient(180deg, #4A2C2A, #9A616D)', color: 'white', borderRadius: 12, padding: '8px 20px', fontWeight: 'bold', textTransform: 'none' }}>
-          Enregistrer
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="sm"
+  fullWidth
+  scroll="paper"
+  PaperProps={{
+    style: { borderRadius: 20, padding: 20, maxHeight: '90vh' } // limite la hauteur
+  }}
+>
+  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+    {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
+  </DialogTitle>
+
+  <DialogContent
+    dividers
+    style={{
+      paddingTop: 10,
+      maxHeight: '60vh', // hauteur max du contenu
+      overflowY: 'auto'  // active le scroll vertical
+    }}
+  >
+    <Stack spacing={2}>
+      <TextField label="Nom complet" value={name} onChange={(e) => setName(e.target.value)} fullWidth variant="outlined" />
+      <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth variant="outlined" />
+      <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth variant="outlined" />
+      <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth variant="outlined" />
+      <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth variant="outlined" />
+      {!contact && (
+        <TextField
+          label="Mot de passe"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          fullWidth
+          variant="outlined"
+          type="password"
+        />
+      )}
+      <div>
+        <label style={{ fontSize: 13, color: '#444', marginRight: 8 }}>Rôle</label>
+        <Select value={role} onChange={(e) => setRole(e.target.value)} size="small" fullWidth variant="outlined">
+          <MenuItem value="admin">admin</MenuItem>
+          <MenuItem value="employe">employé</MenuItem>
+        </Select>
+      </div>
+    </Stack>
+  </DialogContent>
+
+  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
+    <Button
+      onClick={onClose}
+      style={{
+        backgroundColor: '#9A616D',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none',
+        marginRight: 10
+      }}
+    >
+      Annuler
+    </Button>
+    <Button
+      onClick={handleSave}
+      style={{
+        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
+        color: 'white',
+        borderRadius: 12,
+        padding: '8px 20px',
+        fontWeight: 'bold',
+        textTransform: 'none'
+      }}
+    >
+      Enregistrer
+    </Button>
+  </DialogActions>
+</Dialog>
+
   );
 };
 
@@ -781,13 +828,21 @@ if (activeFilter && activeFilter !== "Tous") {
             }}
           >
             <SearchIcon style={{ marginRight: 8, color: '#fff', fontSize: 28 }} />
-            <TextField
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              size="small"
-              style={{ backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, padding: '0 10px', flex: 1 }}
-            />
+           <TextField
+  placeholder=""
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  size="10px"
+  variant="standard"
+  InputProps={{ disableUnderline: true }} // supprime la ligne en bas
+  sx={{
+    backgroundColor: 'white',
+    borderRadius: 20,
+    flex: 1,
+     padding: ' 5px'
+  }}
+/>
+
             <Button
               variant="contained"
               onClick={() => {
