@@ -999,109 +999,206 @@ if (activeFilter && activeFilter !== "Tous") {
               backgroundColor: '#fff',
             }}
           >
-            <Table stickyHeader size="medium">
-              <TableHead>
-                <TableRow style={{ backgroundColor: '#f3f4f6' }}>
-                  {['Nom', 'Position', 'Numéro', 'QG', 'Email', 'Rôle', 'QR', 'Statut', 'Actions'].map((title) => (
-                    <TableCell key={title} style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}>
-                      {title}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                
-                {displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((contact) => (
-                  <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
-                    <TableCell>
-                      <div style={{ borderRadius: 12, fontStyle: 'italic', fontWeight: 500, textAlign: 'center' }}>{contact.name}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ borderRadius: 12, minWidth: 60, textAlign: 'center', fontWeight: 500, transition: 'transform 0.2s', cursor: 'default', fontStyle: 'italic' }}>{contact.position}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ borderRadius: 12, fontWeight: 500, minWidth: 60, textAlign: 'center', cursor: 'default', fontStyle: 'italic' }}>{contact.number}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ padding: '6px 12px', borderRadius: 12, fontWeight: 500, fontStyle: 'italic', minWidth: 60, textAlign: 'center', cursor: 'default' }}>{contact.qg}</div>
-                    </TableCell>
-                    <TableCell style={{ textAlign: 'center' }}>{contact.email || '-'}</TableCell>
-                    <TableCell style={{ textAlign: 'center' }}>{contact.role || 'employe'}</TableCell>
-                    <TableCell style={{ textAlign: 'center' }}>
-                      <div
-                        id={`qr-${contact._id}`}
-                        style={{
-                          display: 'inline-block',
-                          padding: 8,
-                          borderRadius: 12,
-                          backgroundColor: '#fff7ed',
-                          color: '#78350f',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          cursor: 'pointer',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                      >
-                        <QRCodeSVG value={contact._id} size={50} />
-                      </div>
-                    </TableCell>
-                    <TableCell style={{ textAlign: 'center' }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          padding: '6px 14px',
-                          borderRadius: 20,
-                          color: 'white',
-                          fontWeight: 'bold',
-                          background: contact.presentToday ? 'linear-gradient(135deg, #34d399, #16a34a)' : 'linear-gradient(135deg, #f87171, #dc2626)',
-                          boxShadow: contact.presentToday ? '0 2px 6px rgba(22, 163, 74, 0.3)' : '0 2px 6px rgba(220, 38, 38, 0.3)',
-                          minWidth: 80,
-                          textAlign: 'center',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                          cursor: 'default',
-                        }}
-                      >
-                        {contact.presentToday ? 'Présent' : 'Absent'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div style={{ display: 'flex', flexWrap: 'nowrap', justifyContent: 'center', gap: 6, overflowX: 'auto' }}>
-                        <Tooltip title="Modifier">
-                          <IconButton onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }} size="small">
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Supprimer">
-                          <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Exporter PDF">
-                          <IconButton onClick={() => exportQrToPdf(contact)} size="small">
-                            <PictureAsPdfIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Historique">
-                          <IconButton onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }} size="small">
-                            <HistoryIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title={contact.presentToday ? 'Marquer Absent' : 'Marquer Présent'}>
-                          <IconButton
-                            onClick={() => handleTogglePresence(contact._id)}
-                            size="small"
-                            style={{ backgroundColor: contact.presentToday ? '#dc2626' : '#16a34a', color: 'white' }}
-                          >
-                            {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-                          </IconButton>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+           <Table stickyHeader size="medium">
+  <TableHead>
+    <TableRow style={{ backgroundColor: '#f3f4f6' }}>
+      {['Nom', 'Position', 'Numéro', 'QG', 'Email', 'Rôle', 'QR', 'Statut', 'Actions'].map((title) => (
+        <TableCell
+          key={title}
+          style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}
+        >
+          {title}
+        </TableCell>
+      ))}
+    </TableRow>
+  </TableHead>
+  <TableBody>
+    {displayContacts
+      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+      .map((contact) => (
+        <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
+          <TableCell>
+            <div
+              style={{
+                borderRadius: 12,
+                fontStyle: 'italic',
+                fontWeight: 500,
+                textAlign: 'center',
+              }}
+            >
+              {contact.name}
+            </div>
+          </TableCell>
+
+          <TableCell>
+            <div
+              style={{
+                borderRadius: 12,
+                minWidth: 60,
+                textAlign: 'center',
+                fontWeight: 500,
+                transition: 'transform 0.2s',
+                cursor: 'default',
+                fontStyle: 'italic',
+              }}
+            >
+              {contact.position}
+            </div>
+          </TableCell>
+
+          <TableCell>
+            <div
+              style={{
+                borderRadius: 12,
+                fontWeight: 500,
+                minWidth: 60,
+                textAlign: 'center',
+                cursor: 'default',
+                fontStyle: 'italic',
+              }}
+            >
+              {contact.number}
+            </div>
+          </TableCell>
+
+          <TableCell>
+            <div
+              style={{
+                padding: '6px 12px',
+                borderRadius: 12,
+                fontWeight: 500,
+                fontStyle: 'italic',
+                minWidth: 60,
+                textAlign: 'center',
+                cursor: 'default',
+              }}
+            >
+              {contact.qg}
+            </div>
+          </TableCell>
+
+          {/* Email tronqué */}
+          <TableCell style={{ textAlign: 'center' }}>
+            {contact.email
+              ? contact.email.length > 15
+                ? contact.email.substring(0, 15) + '...'
+                : contact.email
+              : '-'}
+          </TableCell>
+
+          <TableCell style={{ textAlign: 'center' }}>
+            {contact.role || 'employe'}
+          </TableCell>
+
+          <TableCell style={{ textAlign: 'center' }}>
+            <div
+              id={`qr-${contact._id}`}
+              style={{
+                display: 'inline-block',
+                padding: 8,
+                borderRadius: 12,
+                backgroundColor: '#fff7ed',
+                color: '#78350f',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            >
+              <QRCodeSVG value={contact._id} size={50} />
+            </div>
+          </TableCell>
+
+          <TableCell style={{ textAlign: 'center' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '6px 14px',
+                borderRadius: 20,
+                color: 'white',
+                fontWeight: 'bold',
+                background: contact.presentToday
+                  ? 'linear-gradient(135deg, #34d399, #16a34a)'
+                  : 'linear-gradient(135deg, #f87171, #dc2626)',
+                boxShadow: contact.presentToday
+                  ? '0 2px 6px rgba(22, 163, 74, 0.3)'
+                  : '0 2px 6px rgba(220, 38, 38, 0.3)',
+                minWidth: 80,
+                textAlign: 'center',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'default',
+              }}
+            >
+              {contact.presentToday ? 'Présent' : 'Absent'}
+            </span>
+          </TableCell>
+
+          <TableCell>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'nowrap',
+                justifyContent: 'center',
+                gap: 6,
+                overflowX: 'auto',
+              }}
+            >
+              <Tooltip title="Modifier">
+                <IconButton
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setNewEntryModalOpen(true);
+                  }}
+                  size="small"
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Supprimer">
+                <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Exporter PDF">
+                <IconButton onClick={() => exportQrToPdf(contact)} size="small">
+                  <PictureAsPdfIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title="Historique">
+                <IconButton
+                  onClick={() => {
+                    setSelectedContactHistory(contact);
+                    setHistoryModalOpen(true);
+                  }}
+                  size="small"
+                >
+                  <HistoryIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
+              <Tooltip title={contact.presentToday ? 'Marquer Absent' : 'Marquer Présent'}>
+                <IconButton
+                  onClick={() => handleTogglePresence(contact._id)}
+                  size="small"
+                  style={{
+                    backgroundColor: contact.presentToday ? '#dc2626' : '#16a34a',
+                    color: 'white',
+                  }}
+                >
+                  {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+  </TableBody>
+</Table>
+
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
