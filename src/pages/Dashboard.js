@@ -836,7 +836,7 @@ if (activeFilter && activeFilter !== "Tous") {
   variant="standard"
   InputProps={{ disableUnderline: true }} // supprime la ligne en bas
   sx={{
-    backgroundColor: 'white',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 20,
     flex: 1,
      padding: ' 5px'
