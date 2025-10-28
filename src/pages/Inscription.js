@@ -1,188 +1,426 @@
-import React, { useState } from "react"; 
-import { useNavigate } from 'react-router-dom'; 
-import { TextField, Button, InputAdornment, IconButton } from '@mui/material'; 
-import { Person, Email, Phone, Visibility, VisibilityOff, Work, Apartment } from '@mui/icons-material'; 
-import axios from 'axios';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState, useContext } from "react";
+import {
+  Box,
+  Stack,
+  IconButton,
+  Typography,
+  TextField,
+  Button,
+  InputAdornment,
+  LinearProgress,
+} from "@mui/material";
+import {
+  Person,
+  Email,
+  Lock,
+  Visibility,
+  VisibilityOff,
+  Phone,
+  Work,
+  LocationCity,
+  Image,
+} from "@mui/icons-material";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-const InscrireAdmin = () => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [number, setNumber] = useState('');          // numéro
-    const [position, setPosition] = useState('');      // poste/position
-    const [qg, setQG] = useState('');                 // QG
-    const [showPassword, setShowPassword] = useState(false); 
-    const navigate = useNavigate();
+import CustomizationSidebar from "./CustomizationSidebar";
+import { CustomizationContext } from "./CustomizationContext";
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!name || !email || !password || !number || !position || !qg) {
-            toast.error("Tous les champs sont requis.", { autoClose: 1000, position: toast.POSITION.BOTTOM_CENTER });
-            return;
-        }
+const InscrireAdminWithSidebar = () => {
+  const navigate = useNavigate();
+  const {
+    customTitle,
+    customLogo,
+    logoPosition,
+    logoSize,
+    titleColor,
+    titleFont,
+    titleSize,
+    formBgColor,
+    buttonColor,
+    setCustomLogo,
+  } = useContext(CustomizationContext);
 
-        try {
-            const response = await axios.post(
-                'https://backendeasypresence.onrender.com/api/auth/register-admin',
-                { name, email, password, number, position, qg } // ajout du qg
-            );
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    number: "",
+    position: "",
+    qg: "",
+    image: null,
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({});
 
-            toast.success('Admin créé avec succès !', { autoClose: 1000 });
-            setName(''); setEmail(''); setPassword(''); setNumber(''); setPosition(''); setQG('');
-            navigate('/login');
+  const handleChange = (e) => {
+    if (e.target.type === "file") {
+      setForm({ ...form, image: e.target.files[0] });
+    } else {
+      setForm({ ...form, [e.target.name]: e.target.value });
+    }
+    setErrors({ ...errors, [e.target.name]: "" });
+  };
 
-        } catch (error) {
-            const msg = error.response?.data?.message || "Erreur lors de l'inscription.";
-            toast.error(msg, { autoClose: 2000 });
-        }
-    };
+  const handleLogoChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setCustomLogo(URL.createObjectURL(e.target.files[0]));
+    }
+  };
 
-    return (
-        <div>
-            <ToastContainer />
-            <section className="gradient-form" style={{ height: '100vh', background: 'linear-gradient(180deg, #4A2C2A, #9A616D)' }}>
-                <div className="container h-100">
-                    <div className="row d-flex justify-content-center align-items-center h-100">
-                        <div className="col-xl-10">
-                            <div className="card rounded-3 shadow-lg">
-                                <div className="row g-0">
-                                    <div className="col-lg-6">
-                                        <div className="card-body p-md-5 mx-md-4">
-                                            <h4 className="mt-3 mb-4 text-center" style={{ color: "#4A2C2A", whiteSpace: 'nowrap' }}>
-                                                Créer un compte Admin
-                                            </h4>
-                                            <form onSubmit={handleSubmit}>
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="Nom complet"
-                                                    value={name}
-                                                    onChange={(e) => setName(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <Person />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="Adresse e-mail"
-                                                    value={email}
-                                                    onChange={(e) => setEmail(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <Email />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="Mot de passe"
-                                                    type={showPassword ? 'text' : 'password'}
-                                                    value={password}
-                                                    onChange={(e) => setPassword(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <IconButton onClick={() => setShowPassword(!showPassword)} style={{ padding: 0 }}>
-                                                                    {showPassword ? <VisibilityOff style={{ color: 'black' }} /> : <Visibility style={{ color: 'black' }} />}
-                                                                </IconButton>
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="Numéro de téléphone"
-                                                    value={number}
-                                                    onChange={(e) => setNumber(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <Phone />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="Position / Poste"
-                                                    value={position}
-                                                    onChange={(e) => setPosition(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <Work />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <TextField
-                                                    fullWidth
-                                                    variant="outlined"
-                                                    placeholder="QG"
-                                                    value={qg}
-                                                    onChange={(e) => setQG(e.target.value)}
-                                                    required
-                                                    InputProps={{
-                                                        startAdornment: (
-                                                            <InputAdornment position="start">
-                                                                <Apartment />
-                                                            </InputAdornment>
-                                                        ),
-                                                    }}
-                                                    className="mb-4"
-                                                    style={{ borderRadius: '20px' }}
-                                                />
-                                                <div className="text-center pt-1 mb-5 pb-1">
-                                                    <Button
-                                                        variant="contained"
-                                                        type="submit"
-                                                        style={{ backgroundColor: '#9A616D', color: 'white', padding: '10px', borderRadius: '20px' }}
-                                                        fullWidth
-                                                    >
-                                                        S'inscrire
-                                                    </Button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    <div className="col-lg-6 d-none d-lg-flex align-items-center gradient-custom-2">
-                                        {/* Image ou décoration */}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
+  const validateStep1 = () => {
+    const newErrors = {};
+    if (!form.name) newErrors.name = "Le nom est requis.";
+    if (!form.email) newErrors.email = "L'email est requis.";
+    if (!form.password) newErrors.password = "Le mot de passe est requis.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors = {};
+    if (!form.number) newErrors.number = "Le numéro de téléphone est requis.";
+    if (!form.position) newErrors.position = "Le poste est requis.";
+    if (!form.qg) newErrors.qg = "Le QG est requis.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (validateStep1()) setStep(2);
+  };
+
+  const prevStep = () => setStep(1);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateStep2()) return;
+
+    try {
+      const formData = new FormData();
+      Object.entries(form).forEach(([key, value]) => {
+        if (value) formData.append(key, value);
+      });
+
+      await axios.post(
+        "https://backendeasypresence.onrender.com/api/auth/register-admin",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      setForm({
+        name: "",
+        email: "",
+        password: "",
+        number: "",
+        position: "",
+        qg: "",
+        image: null,
+      });
+      navigate("/login");
+    } catch (error) {
+      const msg = error.response?.data?.message || "Erreur lors de l'inscription.";
+      setErrors({ global: msg });
+    }
+  };
+
+  return (
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f5f5" }}>
+      <CustomizationSidebar handleLogoChange={handleLogoChange} />
+
+      <Box
+        component="form"
+        onSubmit={handleSubmit}
+        sx={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 5,
+        }}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: 600,
+            bgcolor: formBgColor,
+            borderRadius: 3,
+            p: 5,
+            boxShadow: 4,
+          }}
+        >
+          {/* HEADER */}
+          <Box
+            display="flex"
+            flexDirection={logoPosition === "top" || logoPosition === "bottom" ? "column" : "row"}
+            alignItems="center"
+            justifyContent="center"
+            mb={2}
+          >
+            {(logoPosition === "left" || logoPosition === "top") && customLogo && (
+              <Box
+                component="img"
+                src={customLogo}
+                alt="Logo"
+                sx={{
+                  width: logoSize,
+                  height: logoSize,
+                  mr: logoPosition === "left" ? 2 : 0,
+                  mb: logoPosition === "top" ? 1 : 0,
+                }}
+              />
+            )}
+
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              sx={{ color: titleColor, fontFamily: titleFont, fontSize: titleSize }}
+            >
+              {customTitle}
+            </Typography>
+
+            {(logoPosition === "right" || logoPosition === "bottom") && customLogo && (
+              <Box
+                component="img"
+                src={customLogo}
+                alt="Logo"
+                sx={{
+                  width: logoSize,
+                  height: logoSize,
+                  ml: logoPosition === "right" ? 2 : 0,
+                  mt: logoPosition === "bottom" ? 1 : 0,
+                }}
+              />
+            )}
+          </Box>
+
+          {/* PROGRESSION */}
+          <Box textAlign="center" mb={2}>
+            <Typography variant="body2" color="#777" mb={1}>
+              Étape {step} sur 2
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={step === 1 ? 50 : 100}
+              sx={{
+                height: 8,
+                borderRadius: 5,
+                backgroundColor: "#e5e7eb",
+                "& .MuiLinearProgress-bar": { backgroundColor: buttonColor },
+              }}
+            />
+          </Box>
+
+          {/* FORMULAIRE */}
+          <Stack spacing={2}>
+            {errors.global && (
+              <Typography color="error" textAlign="center">
+                {errors.global}
+              </Typography>
+            )}
+
+            {step === 1 && (
+              <>
+                <TextField
+                  fullWidth
+                  name="name"
+                  placeholder="Nom complet"
+                  value={form.name}
+                  onChange={handleChange}
+                  error={!!errors.name}
+                  helperText={errors.name}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Person />
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  name="email"
+                  placeholder="Adresse e-mail"
+                  value={form.email}
+                  onChange={handleChange}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Email />
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  name="password"
+                  placeholder="Mot de passe"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={handleChange}
+                  error={!!errors.password}
+                  helperText={errors.password}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ p: 0 }}>
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={nextStep}
+                  sx={{
+                    borderRadius: 3,
+                    bgcolor: buttonColor,
+                    color: "#fff",
+                    py: 1.5,
+                    fontWeight: "bold",
+                    fontSize: 16,
+                  }}
+                >
+                  Suivant
+                </Button>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <TextField
+                  fullWidth
+                  name="number"
+                  placeholder="Numéro de téléphone"
+                  value={form.number}
+                  onChange={handleChange}
+                  error={!!errors.number}
+                  helperText={errors.number}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Phone />
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  name="position"
+                  placeholder="Poste"
+                  value={form.position}
+                  onChange={handleChange}
+                  error={!!errors.position}
+                  helperText={errors.position}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Work />
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+                <TextField
+                  fullWidth
+                  name="qg"
+                  placeholder="QG"
+                  value={form.qg}
+                  onChange={handleChange}
+                  error={!!errors.qg}
+                  helperText={errors.qg}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocationCity />
+                      </InputAdornment>
+                    ),
+                    sx: { height: 50 },
+                  }}
+                />
+
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    justifyContent: "flex-start",
+                    height: 50,
+                  }}
+                >
+                  <Image sx={{ mr: 1, color: buttonColor }} />
+                  {form.image ? form.image.name : "Télécharger une image"}
+                  <input type="file" hidden name="image" accept="image/*" onChange={handleChange} />
+                </Button>
+
+                <Stack direction="row" spacing={2}>
+                  <Button
+                    variant="outlined"
+                    onClick={prevStep}
+                    sx={{
+                      borderRadius: 3,
+                      color: buttonColor,
+                      borderColor: buttonColor,
+                      flex: 1,
+                    }}
+                  >
+                    Retour
+                  </Button>
+                  <Button
+                    variant="contained"
+                    type="submit"
+                    sx={{
+                      borderRadius: 3,
+                      bgcolor: buttonColor,
+                      color: "#fff",
+                      py: 1.5,
+                      fontWeight: "bold",
+                      fontSize: 16,
+                      flex: 1,
+                    }}
+                  >
+                    S'inscrire
+                  </Button>
+                </Stack>
+              </>
+            )}
+          </Stack>
+
+          <Typography
+            variant="body2"
+            align="center"
+            mt={3}
+            sx={{
+              color: "#555",
+              "& span": {
+                color: buttonColor,
+                cursor: "pointer",
+                fontWeight: "bold",
+              },
+            }}
+          >
+            Vous avez déjà un compte ?{" "}
+            <span onClick={() => navigate("/login")}>Connectez-vous ici</span>
+          </Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
 };
 
-export default InscrireAdmin;
+export default InscrireAdminWithSidebar;

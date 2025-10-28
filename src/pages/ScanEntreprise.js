@@ -141,7 +141,7 @@ const ScanEntreprise = () => {
         <DialogActions>
           <Button onClick={closeScanner}>Fermer</Button>
         </DialogActions>
-      </Dialog>
+      </Dialog> 
     </div>
   );
 };

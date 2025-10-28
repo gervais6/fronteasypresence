@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import axios from 'axios';
+import { Checkbox, FormControlLabel } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
+import { Avatar } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { Chip, Select, MenuItem } from '@mui/material';
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   TablePagination, Tooltip, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, TextField, Fab
+  Stack, TextField, Fab,Box,  Popover,
 } from '@mui/material';
+import { FormControl, InputLabel} from '@mui/material';
+
+import {   Collapse,  } from "@mui/material";
+import FilterAltIcon from "@mui/icons-material/FilterAlt";
+import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -192,6 +199,7 @@ const exportQrToPdf = (contact) => {
 
 // Modal pour ajouter/modifier un utilisateur
 // Modal pour ajouter/modifier un utilisateur
+
 const NewEntryModal = ({ open, onClose, onSave, contact }) => {
   const [name, setName] = useState(contact?.name || '');
   const [position, setPosition] = useState(contact?.position || '');
@@ -200,6 +208,8 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
   const [email, setEmail] = useState(contact?.email || '');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(contact?.role || 'employe');
+  const [image, setImage] = useState(null);
+  const [preview, setPreview] = useState(contact?.imageUrl || null);
 
   useEffect(() => {
     if (contact) {
@@ -210,6 +220,8 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
       setEmail(contact.email || '');
       setRole(contact.role || 'employe');
       setPassword('');
+      setPreview(contact.imageUrl || null);
+      setImage(null);
     } else {
       setName('');
       setPosition('');
@@ -218,12 +230,27 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
       setEmail('');
       setPassword('');
       setRole('employe');
+      setPreview(null);
+      setImage(null);
     }
   }, [contact, open]);
+
+  // Prévisualisation locale de l'image
+  useEffect(() => {
+    if (!image) return;
+    const objectUrl = URL.createObjectURL(image);
+    setPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [image]);
 
   const handleSave = async () => {
     if (!name || !position || !number || !qg) {
       toast.error('Nom, Position, Numéro et QG sont requis');
+      return;
+    }
+
+    if (!contact?._id && (!email || !password)) {
+      toast.error('Email et mot de passe requis pour un nouvel utilisateur');
       return;
     }
 
@@ -233,39 +260,46 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
       return;
     }
 
-    const payload = { name, email, password, qg, position, number, role };
-
-    // Si c'est un nouvel utilisateur, ajouter email et password
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('position', position);
+    formData.append('number', number);
+    formData.append('qg', qg);
+    formData.append('role', role);
     if (!contact?._id) {
-      if (!email || !password) {
-        toast.error('Email et mot de passe requis pour un nouvel utilisateur');
-        return;
-      }
-      payload.email = email;
-      payload.password = password;
-      payload.role = role; // <- assure-toi que role est bien dans le payload
+      formData.append('email', email);
+      formData.append('password', password);
     }
+    if (image) formData.append('image', image);
 
     try {
       let updatedUser = {};
-
       if (!contact?._id) {
-        // Création
-        const res = await axios.post('https://backendeasypresence.onrender.com/api/auth/register-user', payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.post(
+          'https://backendeasypresence.onrender.com/api/auth/register-user',
+          formData,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        );
         toast.success(res.data.message || 'Utilisateur créé !');
-        updatedUser = { ...payload, _id: res.data.userId };
+        updatedUser = {
+          name, position, number, qg, role, email,
+          _id: res.data.userId,
+          imageUrl: res.data.imageUrl || null
+        };
       } else {
-        // Modification
-        await axios.put(`https://backendeasypresence.onrender.com/api/auth/update-user/${contact._id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await axios.put(
+          `https://backendeasypresence.onrender.com/api/auth/update-user/${contact._id}`,
+          formData,
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        );
         toast.success('Utilisateur modifié !');
-        updatedUser = { ...payload, _id: contact._id };
+        // Utiliser l'URL renvoyée par le serveur si nouvelle image
+        updatedUser = {
+          ...contact,
+          name, position, number, qg, role,
+          imageUrl: res.data.imageUrl || preview
+        };
       }
-
-      // Mise à jour locale
       onSave(updatedUser);
       onClose();
     } catch (err) {
@@ -275,84 +309,97 @@ const NewEntryModal = ({ open, onClose, onSave, contact }) => {
   };
 
   return (
-    <Dialog
-  open={open}
-  onClose={onClose}
-  maxWidth="sm"
-  fullWidth
-  scroll="paper"
-  PaperProps={{
-    style: { borderRadius: 20, padding: 20, maxHeight: '90vh' } // limite la hauteur
-  }}
->
-  <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>
+<Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+  <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>
     {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
   </DialogTitle>
 
-  <DialogContent
-    dividers
-    style={{
-      paddingTop: 10,
-      maxHeight: '60vh', // hauteur max du contenu
-      overflowY: 'auto'  // active le scroll vertical
-    }}
-  >
-    <Stack spacing={2}>
-      <TextField label="Nom complet" value={name} onChange={(e) => setName(e.target.value)} fullWidth variant="outlined" />
-      <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth variant="outlined" />
-      <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth variant="outlined" />
-      <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth variant="outlined" />
-      <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth variant="outlined" />
-      {!contact && (
-        <TextField
-          label="Mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          fullWidth
-          variant="outlined"
-          type="password"
-        />
-      )}
-      <div>
-        <label style={{ fontSize: 13, color: '#444', marginRight: 8 }}>Rôle</label>
-        <Select value={role} onChange={(e) => setRole(e.target.value)} size="small" fullWidth variant="outlined">
-          <MenuItem value="admin">admin</MenuItem>
-          <MenuItem value="employe">employé</MenuItem>
+  <DialogContent>
+    <Stack spacing={3} alignItems="stretch">
+
+      {/* Avatar */}
+      <Box sx={{ position: 'relative', width: 120, height: 120, mx: 'auto' }}>
+        {preview ? (
+          <>
+            <img
+              src={preview}
+              alt="Aperçu"
+              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+            />
+            <IconButton
+              size="small"
+              onClick={() => { setImage(null); setPreview(null); }}
+              sx={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(255,255,255,0.8)' }}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </>
+        ) : (
+          <IconButton
+            component="label"
+            sx={{
+              borderRadius: '50%',
+              border: '2px dashed #ccc',
+              width: 120,
+              height: 120,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <PhotoCamera fontSize="large" />
+            <input hidden accept="image/*" type="file" onChange={(e) => setImage(e.target.files[0])} />
+          </IconButton>
+        )}
+      </Box>
+
+      {/* Champs côte à côte */}
+      <Stack direction="row" spacing={2}>
+        <TextField label="Nom complet" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+        <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth />
+      </Stack>
+
+      <Stack direction="row" spacing={2}>
+        <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth />
+        <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth />
+      </Stack>
+
+      <Stack direction="row" spacing={2}>
+        <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
+        {!contact && <TextField label="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth type="password" />}
+      </Stack>
+
+      {/* Rôle */}
+      <FormControl fullWidth>
+        <InputLabel>Rôle</InputLabel>
+        <Select value={role} onChange={(e) => setRole(e.target.value)}>
+          <MenuItem value="admin">Admin</MenuItem>
+          <MenuItem value="employe">Employé</MenuItem>
         </Select>
-      </div>
+      </FormControl>
+
     </Stack>
   </DialogContent>
 
-  <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
-    <Button
-      onClick={onClose}
-      style={{
-        backgroundColor: '#9A616D',
-        color: 'white',
-        borderRadius: 12,
-        padding: '8px 20px',
-        fontWeight: 'bold',
-        textTransform: 'none',
-        marginRight: 10
-      }}
-    >
+  <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
+    <Button onClick={onClose} variant="outlined" sx={{ px: 3, py: 1 }}>
       Annuler
     </Button>
     <Button
       onClick={handleSave}
-      style={{
-        background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-        color: 'white',
-        borderRadius: 12,
-        padding: '8px 20px',
-        fontWeight: 'bold',
-        textTransform: 'none'
+      variant="contained"
+      sx={{
+        px: 3,
+        py: 1,
+        background: 'linear-gradient(135deg, #4A2C2A, #9A616D)',
+        '&:hover': { background: 'linear-gradient(135deg, #7B3F51, #B86A82)' },
       }}
     >
       Enregistrer
     </Button>
   </DialogActions>
 </Dialog>
+
 
   );
 };
@@ -364,38 +411,95 @@ const HistoryModal = ({ open, onClose, contact }) => {
   if (!contact) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ style: { borderRadius: 20, padding: 20 } }}>
-      <DialogTitle style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22 }}>Historique: {contact.name}</DialogTitle>
-      <DialogContent dividers style={{ paddingTop: 10 }}>
-        {(!contact.history || contact.history.length === 0) ? (
-          <p style={{ textAlign: 'center', color: '#6b7280' }}>Aucun historique pour ce membre.</p>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f3f4f6' }}>
-                <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Date</th>
-                <th style={{ padding: '10px 0', fontWeight: 'bold' }}>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contact.history.map((entry, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                  <td style={{ padding: '8px 0' }}>{entry.date}</td>
-                  <td style={{ color: entry.present ? '#16a34a' : '#dc2626', fontWeight: 'bold', padding: '8px 0' }}>
-                    {entry.present ? `✅ Présent à ${entry.time || '--:--'}` : '❌ Absent'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </DialogContent>
-      <DialogActions style={{ justifyContent: 'center', marginTop: 10 }}>
-        <Button onClick={onClose} style={{ background: 'linear-gradient(180deg, #4A2C2A, #9A616D)', color: 'white', borderRadius: 12, padding: '8px 20px', fontWeight: 'bold' }}>
-          Fermer
-        </Button>
-      </DialogActions>
-    </Dialog>
+<Dialog
+  open={open}
+  onClose={onClose}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{ style: { borderRadius: 5, padding: 20 } }}
+>
+  {/* Titre avec nom */}
+<Box sx={{ textAlign: 'center', mb: 3 }}>
+  <span
+    style={{
+      display: 'block',
+      fontWeight: 700,
+      fontSize: 20,
+      color: '#2c2c2c',
+      letterSpacing: 0.5,
+      marginBottom: 4,
+    }}
+  >
+    Historique
+  </span>
+  <span
+    style={{
+      display: 'inline-block',
+      fontSize: 14,
+      color: '#6b7280',
+      fontWeight: 500,
+      padding: '2px 10px',
+      borderRadius: 12,
+      backgroundColor: '#f3f4f6',
+    }}
+  >
+    {contact.name}
+  </span>
+</Box>
+
+
+  {/* Contenu */}
+  <DialogContent>
+    {(!contact.history || contact.history.length === 0) ? (
+      <p style={{ textAlign: 'center', color: '#6b7280', marginTop: 20 }}>
+        Aucun historique pour ce membre.
+      </p>
+    ) : (
+      <Stack spacing={1} mt={1}>
+        {contact.history.map((entry, idx) => (
+          <Box
+            key={idx}
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 15px',
+              borderRadius: 2,
+              backgroundColor: idx % 2 === 0 ? '#f3f4f6' : '#fff',
+              fontWeight: 500,
+            }}
+          >
+            <span>{entry.date}</span>
+            <span style={{ color: entry.present ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
+              {entry.present ? `✅ Présent à ${entry.time || '--:--'}` : '❌ Absent'}
+            </span>
+          </Box>
+        ))}
+      </Stack>
+    )}
+  </DialogContent>
+
+  {/* Bouton Fermer */}
+  <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
+    <Button
+      onClick={onClose}
+      sx={{
+        background: 'linear-gradient(135deg, #4A2C2A, #9A616D)',
+        color: 'white',
+        borderRadius: 2,
+        px: 3,
+        py: 1.2,
+        fontWeight: 'bold',
+        fontSize: 14,
+        '&:hover': { background: 'linear-gradient(135deg, #7B3F51, #B86A82)' },
+      }}
+    >
+      Fermer
+    </Button>
+  </DialogActions>
+</Dialog>
+
+
   );
 };
 
@@ -476,6 +580,7 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
 };
 
 
+
 // Composant principal Dashboard
 const Dashboard = () => {
   const [contacts, setContacts] = useState([]);
@@ -490,6 +595,7 @@ const Dashboard = () => {
   const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+const [openFilters, setOpenFilters] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -497,6 +603,7 @@ const findUserById = (id) => {
   if (!contacts || contacts.length === 0) return null;
   return contacts.find(c => c._id === id) || null;
 };
+
 
 
 useEffect(() => {
@@ -749,8 +856,29 @@ const handleScanSuccess = async (decodedText) => {
 
 
 
+  const [allColumns, setAllColumns] = useState([
+    { key: 'imageUrl', label: 'Photo', visible: true },
+    { key: 'name', label: 'Nom', visible: true },
+    { key: 'position', label: 'Position', visible: true },
+    { key: 'number', label: 'Numéro', visible: true },
+    { key: 'qg', label: 'QG', visible: false },       // optionnel
+    { key: 'email', label: 'Email', visible: false }, // optionnel
+    { key: 'role', label: 'Rôle', visible: true },
+    { key: 'qr', label: 'QR', visible: true },
+    { key: 'presentToday', label: 'Statut', visible: true },
+    { key: 'actions', label: 'Actions', visible: true },
+  ]);
 
+ const [anchorEl, setAnchorEl] = useState(null);
+  const handleOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const open = Boolean(anchorEl);
 
 useEffect(() => {
   const fetchContacts = async () => {
@@ -794,524 +922,493 @@ if (activeFilter && activeFilter !== "Tous") {
 
   return (
     <>
+
+
+
       <ToastContainer />
       <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-        <header
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: isSidebarOpen ? 220 : 70,
-            right: 0,
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            padding: '8px 20px',
-            backgroundColor: '#fff',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            gap: 10,
-            borderBottomLeftRadius: 12,
-            borderBottomRightRadius: 12,
+ <header
+  style={{
+    position: "fixed",
+    top: 0,
+    left: isSidebarOpen ? 220 : 70,
+    right: 0,
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    padding: "10px 20px",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    transition: "left 0.3s ease",
+  }}
+>
+  {/* Barre principale */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+    }}
+  >
+    {/* Barre de recherche */}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flex: 1,
+        backgroundColor: "#f5f5f5",
+        borderRadius: 20,
+        padding: "4px 10px",
+      }}
+    >
+      <SearchIcon style={{ color: "#555", marginRight: 6 }} />
+      <TextField
+        placeholder="Rechercher un membre..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        variant="standard"
+        InputProps={{ disableUnderline: true }}
+        sx={{
+          flex: 1,
+          "& input": { fontSize: 14, color: "#333" },
+        }}
+      />
+    </div>
+
+    {/* Boutons */}
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Button
+        variant="contained"
+        onClick={() => {
+          setSelectedContact(null);
+          setNewEntryModalOpen(true);
+        }}
+        startIcon={<AddIcon />}
+        sx={{
+          backgroundColor: "#4A2C2A",
+          color: "#fff",
+          borderRadius: "8px",
+          textTransform: "none",
+          fontSize: 14,
+          "&:hover": { backgroundColor: "#6b3f3d" },
+        }}
+      >
+        Ajouter
+      </Button>
+
+      <Button
+        variant="contained"
+        onClick={() => setScannerOpen(true)}
+        startIcon={<QrCodeScannerIcon />}
+        sx={{
+          backgroundColor: "#9A616D",
+          color: "#fff",
+          borderRadius: "8px",
+          textTransform: "none",
+          fontSize: 14,
+          "&:hover": { backgroundColor: "#b2727d" },
+        }}
+      >
+        Scanner
+      </Button>
+
+      <Tooltip title="Exporter QR Entreprise (PDF)">
+        <IconButton
+          onClick={exportCompanyQrToPdf}
+          sx={{
+            border: "1px solid #ccc",
+            color: "#444",
+            "&:hover": { backgroundColor: "#f0f0f0" },
           }}
-          className="main-header"
         >
-          <div
+          <PictureAsPdfIcon />
+        </IconButton>
+      </Tooltip>
+    </div>
+  </div>
+
+  {/* Filtres */}
+  <div style={{ display: "flex", gap: 8 }}>
+    {["Tous", "Présents", "Absents"].map((filter) => (
+      <Chip
+        key={filter}
+        label={filter}
+        onClick={() => setActiveFilter(filter)}
+        variant={activeFilter === filter ? "filled" : "outlined"}
+        style={{
+          backgroundColor:
+            activeFilter === filter ? "#4A2C2A" : "transparent",
+          color: activeFilter === filter ? "#fff" : "#333",
+          borderColor: "#ccc",
+          fontSize: 13,
+        }}
+      />
+    ))}
+  </div>
+</header>
+
+
+
+<aside
+  style={{
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    height: '100vh',
+    width: isSidebarOpen ? 220 : 60,
+    transition: 'width 0.3s ease-in-out',
+    background: 'linear-gradient(180deg, #4A2C2A, #7B3F51)',
+    color: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowX: 'hidden',
+    overflowY: 'auto',
+    paddingTop: 10,
+    boxShadow: '2px 0 12px rgba(0,0,0,0.1)',
+  }}
+>
+  {/* Header */}
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10, marginBottom: 40 }}>
+    {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap', marginTop: -15 }}>Easy Présence</div>}
+    <IconButton
+      onClick={() => setSidebarOpen(!isSidebarOpen)}
+      style={{ color: 'white', marginTop: -20, transition: 'transform 0.3s' }}
+      onMouseEnter={(e) => (e.currentTarget.style.transform = 'rotate(180deg)')}
+      onMouseLeave={(e) => (e.currentTarget.style.transform = 'rotate(0deg)')}
+    >
+      {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
+    </IconButton>
+  </div>
+
+  {/* Liste des QG + Tous */}
+  <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+    {qgList.map((qg) => {
+      // Si "Tous", compter tous les contacts, sinon filtrer par QG
+      const count = qg === "Tous" ? contacts.length : contacts.filter((c) => String(c.qg).trim() === String(qg).trim()).length;
+
+      return (
+        <li key={qg} style={{ marginBottom: 8 }}>
+          <Button
+            onClick={() => setFilterQG(qg)}
+            variant={filterQG === qg ? 'contained' : 'text'}
             style={{
               display: 'flex',
               alignItems: 'center',
-              padding: '6px 12px',
-              borderRadius: 25,
-              background: 'linear-gradient(135deg, #4A2C2A, #9A616D)',
-              gap: 8,
               width: '100%',
+              justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+              padding: '10px 14px',
+              color: 'white',
+              backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
+              textTransform: 'none',
+              borderRadius: 20,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              boxShadow: filterQG === qg ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+              transition: 'all 0.3s',
+              fontWeight: 500,
             }}
           >
-            <SearchIcon style={{ marginRight: 8, color: '#fff', fontSize: 28 }} />
-           <TextField
-  placeholder=""
-  value={searchTerm}
-  onChange={(e) => setSearchTerm(e.target.value)}
-  size="10px"
-  variant="standard"
-  InputProps={{ disableUnderline: true }} // supprime la ligne en bas
-  sx={{
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    flex: 1,
-     padding: ' 5px'
-  }}
-/>
-
-            <Button
-              variant="contained"
-              onClick={() => {
-                setSelectedContact(null);
-                setNewEntryModalOpen(true);
-              }}
-              style={{
-                background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-                color: 'white',
-                borderRadius: 20,
-                padding: '6px 16px',
-                textTransform: 'none',
-              }}
-            >
-              Ajouter
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => setScannerOpen(true)}
-              style={{
-                background: 'linear-gradient(180deg, #4A2C2A, #9A616D)',
-                color: 'white',
-                borderRadius: 20,
-                padding: '6px 16px',
-                textTransform: 'none',
-              }}
-            >
-              Scanner
-            </Button>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-            {['tous','Présents', 'Absents'].map((filter) => (
-              <Chip
-                key={filter}
-                label={filter}
-                onClick={() => setActiveFilter(filter)}
-                color={activeFilter === filter ? 'primary' : 'default'}
-                variant={activeFilter === filter ? 'filled' : 'outlined'}
-                style={{
-                  background: activeFilter === filter ? 'linear-gradient(180deg, #4A2C2A, #9A616D)' : 'rgba(0,0,0,0.05)',
-                  color: activeFilter === filter ? '#fff' : '#333',
-                  borderRadius: 20,
-                  padding: '6px 16px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              />
-            ))}
-          </div>
-        </header>
-
-        <aside
-          style={{
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            height: '100vh',
-            width: isSidebarOpen ? 220 : 60,
-            transition: 'width 0.3s ease-in-out',
-            background: 'linear-gradient(180deg, #4A2C2A, #7B3F51)',
-            color: 'white',
-            display: 'flex',
-            flexDirection: 'column',
-            overflowX: 'hidden',
-            overflowY: 'auto',
-            paddingTop: 10,
-            boxShadow: '2px 0 12px rgba(0,0,0,0.1)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10, marginBottom: 40 }}>
-            {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap', marginTop: -15 }}>Easy Présence</div>}
-            <IconButton
-              onClick={() => setSidebarOpen(!isSidebarOpen)}
-              style={{ color: 'white', marginTop: -20, transition: 'transform 0.3s' }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'rotate(180deg)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'rotate(0deg)')}
-            >
-              {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
-            </IconButton>
-          </div>
-          <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-            {qgList.map((qg) => (
-              <li key={qg} style={{ marginBottom: 8 }}>
-                <Button
-                  onClick={() => setFilterQG(qg)}
-                  variant={filterQG === qg ? 'contained' : 'text'}
+            <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
+            {isSidebarOpen && (
+              <span style={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}>
+                {qg}
+                <span
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    width: '100%',
-                    justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-                    padding: '10px 14px',
-                    color: 'white',
-                    backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
-                    textTransform: 'none',
-                    borderRadius: 20,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    boxShadow: filterQG === qg ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-                    transition: 'all 0.3s',
-                    fontWeight: 500,
+                    backgroundColor: 'white',
+                    color: '#2C2C2C',
+                    borderRadius: '50%',
+                    padding: '2px 7px',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    minWidth: 24,
+                    textAlign: 'center',
                   }}
                 >
-                  <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-                  {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>{qg}</span>}
-                </Button>
-              </li>
-            ))}
-            {localStorage.getItem('userRole') === 'admin' && (
-              <>
-                <li style={{ marginBottom: 8 }}>
-                  <Button
-                    onClick={exportCompanyQrToPdf}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      width: '100%',
-                      justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-                      padding: '10px 14px',
-                      color: 'white',
-                      backgroundColor: 'transparent',
-                      textTransform: 'none',
-                      borderRadius: 20,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      transition: 'all 0.3s',
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <PictureAsPdfIcon style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-                    {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>QR Entreprise (PDF)</span>}
-                  </Button>
-                </li>
-                <li style={{ marginBottom: 8 }}>
-                  <Button
-                    onClick={exportCompanyQrToPng}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      width: '100%',
-                      justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-                      padding: '10px 14px',
-                      color: 'white',
-                      backgroundColor: 'transparent',
-                      textTransform: 'none',
-                      borderRadius: 20,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      transition: 'all 0.3s',
-                      fontWeight: 500,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <PictureAsPdfIcon style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-                    {isSidebarOpen && <span style={{ flex: 1, textAlign: 'left' }}>QR Entreprise (PNG)</span>}
-                  </Button>
-                </li>
-              </>
+                  {count}
+                </span>
+              </span>
             )}
-            <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <Button
-                onClick={handleLogout}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: isSidebarOpen ? '90%' : '50px',
-                  backgroundColor: '#9A616D',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  textTransform: 'none',
-                  borderRadius: 25,
-                  padding: '12px 15px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#A47580')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#9A616D')}
-              >
-                <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
-                {isSidebarOpen && <span>Déconnexion</span>}
-              </Button>
-            </li>
-          </ul>
-        </aside>
+          </Button>
+        </li>
+      );
+    })}
 
-        <main
-          style={{
-            marginLeft: isSidebarOpen ? 220 : 70,
-            marginTop: 150,
-            padding: 20,
-            transition: 'margin-left 0.3s ease',
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            position: 'relative',
-          }}
-        >
-          <TableContainer
-            component={Paper}
-            style={{
-              width: '100%',
-              maxWidth: '100%',
-              overflowX: 'auto',
-              borderRadius: 12,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              backgroundColor: '#fff',
-            }}
-          >
-           <Table stickyHeader size="medium">
-  <TableHead>
-    <TableRow style={{ backgroundColor: '#f3f4f6' }}>
-      {['Nom', 'Position', 'Numéro', 'QG', 'Email', 'Rôle', 'QR', 'Statut', 'Actions'].map((title) => (
-        <TableCell
-          key={title}
-          style={{ fontWeight: 'bold', padding: '12px 16px', textAlign: 'center' }}
-        >
-          {title}
-        </TableCell>
-      ))}
-    </TableRow>
-  </TableHead>
-  <TableBody>
-    {displayContacts
-      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-      .map((contact) => (
-        <TableRow key={contact._id} style={{ verticalAlign: 'middle' }}>
-          <TableCell>
-            <div
-              style={{
-                borderRadius: 12,
-                fontStyle: 'italic',
-                fontWeight: 500,
-                textAlign: 'center',
+    {/* Boutons QR pour admin */}
+    {localStorage.getItem('userRole') === 'admin' && (
+      <>
+       
+       
+      </>
+    )}
+
+    {/* Bouton déconnexion */}
+    <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+      <Button
+        onClick={handleLogout}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: isSidebarOpen ? '90%' : '50px',
+          backgroundColor: '#9A616D',
+          color: 'white',
+          fontWeight: 'bold',
+          textTransform: 'none',
+          borderRadius: 25,
+          padding: '12px 15px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#A47580')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#9A616D')}
+      >
+        <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
+        {isSidebarOpen && <span>Déconnexion</span>}
+      </Button>
+    </li>
+  </ul>
+</aside>
+
+<main
+  style={{
+    marginLeft: isSidebarOpen ? 220 : 70,
+    marginTop: 100,
+    padding: 20,
+    transition: "margin-left 0.3s ease",
+    minHeight: "100vh",
+    backgroundColor: "#f9f9f9",
+  }}
+>
+  {/* Bouton filtre */}
+  <Stack
+    direction="row"
+    justifyContent="flex-end"
+    sx={{ position: "sticky", top: 10, zIndex: 10, mb: 2 }}
+  >
+    <IconButton
+      onClick={handleOpen}
+      sx={{
+        backgroundColor: "#fff",
+        color: "#333",
+        border: "1px solid #ddd",
+        "&:hover": { backgroundColor: "#eee" },
+      }}
+    >
+      <FilterAltIcon />
+    </IconButton>
+  </Stack>
+
+  {/* Popover filtres */}
+  <Popover
+    open={open}
+    anchorEl={anchorEl}
+    onClose={handleClose}
+    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+    transformOrigin={{ vertical: "top", horizontal: "right" }}
+    PaperProps={{
+      sx: {
+        borderRadius: 1,
+        boxShadow: 2,
+        padding: 2,
+        minWidth: 220,
+        backgroundColor: "#fff",
+      },
+    }}
+  >
+    <Stack direction="column" spacing={1}>
+      {allColumns.map((col, idx) => (
+        <FormControlLabel
+          key={col.key}
+          control={
+            <Checkbox
+              checked={col.visible}
+              onChange={() => {
+                const newCols = [...allColumns];
+                newCols[idx].visible = !newCols[idx].visible;
+                setAllColumns(newCols);
               }}
-            >
-              {contact.name}
-            </div>
-          </TableCell>
-
-          <TableCell>
-            <div
-              style={{
-                borderRadius: 12,
-                minWidth: 60,
-                textAlign: 'center',
-                fontWeight: 500,
-                transition: 'transform 0.2s',
-                cursor: 'default',
-                fontStyle: 'italic',
-              }}
-            >
-              {contact.position}
-            </div>
-          </TableCell>
-
-          <TableCell>
-            <div
-              style={{
-                borderRadius: 12,
-                fontWeight: 500,
-                minWidth: 60,
-                textAlign: 'center',
-                cursor: 'default',
-                fontStyle: 'italic',
-              }}
-            >
-              {contact.number}
-            </div>
-          </TableCell>
-
-          <TableCell>
-            <div
-              style={{
-                padding: '6px 12px',
-                borderRadius: 12,
-                fontWeight: 500,
-                fontStyle: 'italic',
-                minWidth: 60,
-                textAlign: 'center',
-                cursor: 'default',
-              }}
-            >
-              {contact.qg}
-            </div>
-          </TableCell>
-
-          {/* Email tronqué */}
-          <TableCell style={{ textAlign: 'center' }}>
-            {contact.email
-              ? contact.email.length > 15
-                ? contact.email.substring(0, 15) + '...'
-                : contact.email
-              : '-'}
-          </TableCell>
-
-          <TableCell style={{ textAlign: 'center' }}>
-            {contact.role || 'employe'}
-          </TableCell>
-
-          <TableCell style={{ textAlign: 'center' }}>
-            <div
-              id={`qr-${contact._id}`}
-              style={{
-                display: 'inline-block',
-                padding: 8,
-                borderRadius: 12,
-                backgroundColor: '#fff7ed',
-                color: '#78350f',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            >
-              <QRCodeSVG value={contact._id} size={50} />
-            </div>
-          </TableCell>
-
-          <TableCell style={{ textAlign: 'center' }}>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '6px 14px',
-                borderRadius: 20,
-                color: 'white',
-                fontWeight: 'bold',
-                background: contact.presentToday
-                  ? 'linear-gradient(135deg, #34d399, #16a34a)'
-                  : 'linear-gradient(135deg, #f87171, #dc2626)',
-                boxShadow: contact.presentToday
-                  ? '0 2px 6px rgba(22, 163, 74, 0.3)'
-                  : '0 2px 6px rgba(220, 38, 38, 0.3)',
-                minWidth: 80,
-                textAlign: 'center',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                cursor: 'default',
-              }}
-            >
-              {contact.presentToday ? 'Présent' : 'Absent'}
-            </span>
-          </TableCell>
-
-          <TableCell>
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'nowrap',
-                justifyContent: 'center',
-                gap: 6,
-                overflowX: 'auto',
-              }}
-            >
-              <Tooltip title="Modifier">
-                <IconButton
-                  onClick={() => {
-                    setSelectedContact(contact);
-                    setNewEntryModalOpen(true);
-                  }}
-                  size="small"
-                >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Supprimer">
-                <IconButton onClick={() => handleDeleteMember(contact._id)} size="small">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Exporter PDF">
-                <IconButton onClick={() => exportQrToPdf(contact)} size="small">
-                  <PictureAsPdfIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Historique">
-                <IconButton
-                  onClick={() => {
-                    setSelectedContactHistory(contact);
-                    setHistoryModalOpen(true);
-                  }}
-                  size="small"
-                >
-                  <HistoryIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title={contact.presentToday ? 'Marquer Absent' : 'Marquer Présent'}>
-                <IconButton
-                  onClick={() => handleTogglePresence(contact._id)}
-                  size="small"
-                  style={{
-                    backgroundColor: contact.presentToday ? '#dc2626' : '#16a34a',
-                    color: 'white',
-                  }}
-                >
-                  {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-                </IconButton>
-              </Tooltip>
-            </div>
-          </TableCell>
-        </TableRow>
-      ))}
-  </TableBody>
-</Table>
-
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={displayContacts.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={(e, newPage) => setPage(newPage)}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-              size="small"
             />
-          </TableContainer>
-          {window.innerWidth <= 600 && (
-            <div style={{ position: 'fixed', bottom: 20, right: 20, display: 'flex', flexDirection: 'column', gap: 12, zIndex: 2000 }}>
-              <Tooltip title="Ajouter">
-                <IconButton
-                  onClick={() => {
-                    setSelectedContact(null);
-                    setNewEntryModalOpen(true);
-                  }}
-                  style={{ backgroundColor: '#4A2C2A', color: 'white', width: 56, height: 56, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-              {localStorage.getItem('userRole') === 'admin' && (
-                <>
-                  <Tooltip title="Exporter QR (PNG)">
-                    <IconButton
-                      onClick={exportCompanyQrToPng}
-                      style={{ backgroundColor: '#7B3F51', color: 'white', width: 56, height: 56, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                    >
-                      <PictureAsPdfIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Exporter QR (PDF)">
-                    <IconButton
-                      onClick={exportCompanyQrToPdf}
-                      style={{ backgroundColor: '#7B3F51', color: 'white', width: 56, height: 56, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                    >
-                      <PictureAsPdfIcon />
-                    </IconButton>
-                  </Tooltip>
-                </>
-              )}
-              <Tooltip title="Scanner">
-                <IconButton
-                  onClick={() => setScannerOpen(true)}
-                  style={{ backgroundColor: '#9A616D', color: 'white', width: 56, height: 56, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}
-                >
-                  <QrCodeScannerIcon />
-                </IconButton>
-              </Tooltip>
-            </div>
-          )}
-        </main>
+          }
+          label={col.label}
+        />
+      ))}
+    </Stack>
+  </Popover>
+
+  {/* Tableau principal */}
+  <TableContainer
+    component={Paper}
+    sx={{
+      borderRadius: 1,
+      overflowX: "auto",
+      backgroundColor: "#fff",
+      boxShadow: 1,
+      mt: 2,
+    }}
+  >
+    <Table stickyHeader size="medium">
+      <TableHead>
+        <TableRow sx={{ backgroundColor: "#eee" }}>
+          {allColumns
+            .filter((col) => col.visible)
+            .map((col) => (
+              <TableCell
+                key={col.key}
+                sx={{ fontWeight: "bold", textAlign: "center", px: 2, py: 1 }}
+              >
+                {col.label}
+              </TableCell>
+            ))}
+        </TableRow>
+      </TableHead>
+
+      <TableBody>
+        {displayContacts
+          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+          .map((contact) => (
+            <TableRow key={contact._id} hover>
+              {allColumns
+                .filter((col) => col.visible)
+                .map((col) => {
+                  switch (col.key) {
+                    case "imageUrl":
+                      return (
+                        <TableCell key={col.key} align="center">
+                          <Avatar
+                            src={contact.imageUrl ? `https://easy-presence-api.onrender.com${contact.imageUrl}` : ""}
+                            alt={contact.name}
+                            sx={{ width: 40, height: 40, margin: "auto" }}
+                          >
+                            {!contact.imageUrl && (contact.name?.charAt(0) || "U")}
+                          </Avatar>
+                        </TableCell>
+                      );
+                    case "qr":
+                      return (
+                        <TableCell key={col.key} align="center">
+                          <QRCodeSVG value={contact._id} size={40} />
+                        </TableCell>
+                      );
+                    case "presentToday":
+                      return (
+                        <TableCell key={col.key} align="center">
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "4px 12px",
+                              borderRadius: 12,
+                              color: "#fff",
+                              backgroundColor: contact.presentToday ? "#4caf50" : "#f44336",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {contact.presentToday ? "Présent" : "Absent"}
+                          </span>
+                        </TableCell>
+                      );
+                    case "role":
+                      return (
+                        <TableCell key={col.key} align="center">
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "4px 12px",
+                              borderRadius: 12,
+                              color: "#fff",
+                              backgroundColor: contact.role?.toLowerCase() === "admin" ? "#2196f3" : "#ff9800",
+                              fontWeight: 500,
+                            }}
+                          >
+                            {contact.role}
+                          </span>
+                        </TableCell>
+                      );
+                    case "actions":
+                      return (
+                        <TableCell key={col.key} align="center">
+                          <Stack direction="row" spacing={1} justifyContent="center">
+                            <Tooltip title="Modifier">
+                              <IconButton
+                                onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }}
+                                size="small"
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Supprimer">
+                              <IconButton
+                                onClick={() => handleDeleteMember(contact._id)}
+                                size="small"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Historique">
+                              <IconButton
+                                onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }}
+                                size="small"
+                              >
+                                <HistoryIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Exporter PDF">
+                              <IconButton
+                                onClick={() => exportQrToPdf(contact)}
+                                size="small"
+                              >
+                                <PictureAsPdfIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
+                              <IconButton
+                                onClick={() => handleTogglePresence(contact._id)}
+                                size="small"
+                                style={{
+                                  backgroundColor: contact.presentToday ? "#f44336" : "#4caf50",
+                                  color: "#fff",
+                                }}
+                              >
+                                {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      );
+                    default:
+                      return (
+                        <TableCell key={col.key} align="center">{contact[col.key]}</TableCell>
+                      );
+                  }
+                })}
+            </TableRow>
+          ))}
+      </TableBody>
+    </Table>
+
+    <TablePagination
+      rowsPerPageOptions={[5, 10, 25]}
+      component="div"
+      count={displayContacts.length}
+      rowsPerPage={rowsPerPage}
+      page={page}
+      onPageChange={(e, newPage) => setPage(newPage)}
+      onRowsPerPageChange={(e) => {
+        setRowsPerPage(parseInt(e.target.value, 10));
+        setPage(0);
+      }}
+      size="small"
+    />
+  </TableContainer>
+</main>
+
+
       </div>
       <NewEntryModal open={isNewEntryModalOpen} onClose={() => setNewEntryModalOpen(false)} onSave={handleSaveNewEntry} contact={selectedContact} />
       <HistoryModal open={isHistoryModalOpen} onClose={() => setHistoryModalOpen(false)} contact={selectedContactHistory} />
