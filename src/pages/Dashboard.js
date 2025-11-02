@@ -1,19 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom/client';
 import axios from 'axios';
-import { Checkbox, FormControlLabel } from '@mui/material';
-import { QRCodeSVG } from 'qrcode.react';
-import { Avatar } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import { Chip, Select, MenuItem } from '@mui/material';
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  TablePagination, Tooltip, IconButton, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, TextField, Fab,Box,  Popover,
-} from '@mui/material';
-import { FormControl, InputLabel} from '@mui/material';
 
-import {   Collapse,  } from "@mui/material";
+import { 
+  Checkbox, 
+  FormControlLabel, 
+  CircularProgress, 
+  Badge, 
+  Snackbar,
+  Alert,
+  Menu,
+  MenuItem,
+  Typography,
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  TablePagination, 
+  Tooltip, 
+  IconButton, 
+  Button, 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions,
+  Stack, 
+  TextField, 
+  Fab, 
+  Box, 
+  Popover,
+  FormControl, 
+  InputLabel,
+  Select,
+  Collapse,
+  Avatar,
+  Chip
+} from '@mui/material';
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
@@ -25,31 +50,357 @@ import HistoryIcon from '@mui/icons-material/History';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
+import SearchIcon from '@mui/icons-material/Search';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import ChatIcon from '@mui/icons-material/Chat';
+import PhoneIcon from '@mui/icons-material/Phone';
 import { FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { HiOutlineUserCircle } from 'react-icons/hi';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { QRCodeSVG } from 'qrcode.react';
 import { jsPDF } from 'jspdf';
 import { Html5Qrcode } from 'html5-qrcode';
 
-const API_AUTH = "https://backendeasypresence.onrender.com/api/auth";
-const API_PRESENCES = "https://backendeasypresence.onrender.com/api/presences";
-const API_DELETE = 'https://backendeasypresence.onrender.com/api/auth/users';
-const API_USERS = 'https://backendeasypresence.onrender.com/api/auth/users';
-const API_MEMBRES = 'https://backendeasypresence.onrender.com/api/auth/register-user';
-const AUTH_BASE = 'https://backendeasypresence.onrender.com/api/auth';
-const COMPANY_ID = localStorage.getItem('companyId') || 'company_123'; // ID de l'entreprise, configurable via localStorage
-const SCAN_START_HOUR = 7; // Heure de début pour le scan
-const SCAN_END_HOUR = 19; // Heure de fin pour le scan
+// Import du contexte de personnalisation
+import { CustomizationContext } from './CustomizationContext';
 
-// Sauvegarde des actions en attente (offline)
-const savePendingAction = (action) => {
-  const pending = JSON.parse(localStorage.getItem('pendingActions') || '[]');
-  pending.push(action);
-  localStorage.setItem('pendingActions', JSON.stringify(pending));
+// Configuration API
+const API_BASE = "https://backendeasypresence.onrender.com/api";
+const API_AUTH = `${API_BASE}/auth`;
+const API_PRESENCES = `${API_BASE}/presences`;
+const API_USERS = `${API_BASE}/auth/users`;
+const API_REGISTER = `${API_BASE}/auth/register-user`;
+const API_UPDATE_USER = `${API_BASE}/auth/update-user`;
+
+// Configuration des constantes
+const CONTRACT_TYPES = [
+  { value: 'CDI', label: 'CDI' },
+  { value: 'CDD', label: 'CDD' },
+  { value: 'Stage', label: 'Stage' },
+  { value: 'Alternance', label: 'Alternance' },
+  { value: 'Freelance', label: 'Freelance' },
+  { value: '', label: 'Non spécifié' }
+];
+
+const USER_ROLES = [
+  { value: 'admin', label: 'Administrateur' },
+  { value: 'employe', label: 'Employé' },
+  { value: 'autre', label: 'Autre' }
+];
+
+const COMPANY_ID = localStorage.getItem('companyId') || 'company_123';
+
+// Utilitaires améliorés
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  try {
+    return new Date(dateString).toISOString().split('T')[0];
+  } catch {
+    return '';
+  }
 };
 
-// Déconnexion
+const formatDateForDisplay = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+const formatSalary = (salary) => {
+  if (!salary && salary !== 0) return '-';
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR'
+  }).format(salary);
+};
+
+const validateUserForm = (formData, isEdit = false) => {
+  const errors = {};
+
+  if (!formData.name?.trim()) errors.name = 'Le nom est requis';
+  if (!formData.position?.trim()) errors.position = 'La position est requise';
+  if (!formData.number?.trim()) errors.number = 'Le numéro est requis';
+  if (!formData.qg?.trim()) errors.qg = 'Le QG est requis';
+  
+  if (!isEdit) {
+    if (!formData.email?.trim()) errors.email = 'L\'email est requis';
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Email invalide';
+    
+    if (!formData.password) errors.password = 'Le mot de passe est requis';
+    else if (formData.password.length < 6) errors.password = 'Le mot de passe doit faire au moins 6 caractères';
+  }
+
+  if (formData.contractStart && formData.contractEnd) {
+    const start = new Date(formData.contractStart);
+    const end = new Date(formData.contractEnd);
+    if (end < start) errors.contractEnd = 'La fin du contrat ne peut pas être avant le début';
+  }
+
+  if (formData.salary && formData.salary < 0) errors.salary = 'Le salaire ne peut pas être négatif';
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors
+  };
+};
+
+// Fonction utilitaire pour les URLs d'image - CORRIGÉE
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // Si c'est déjà une URL complète ou une URL blob, la retourner telle quelle
+  if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) {
+    return imagePath;
+  }
+  
+  // Si c'est un chemin relatif, construire l'URL complète
+  if (imagePath.startsWith('/uploads/') || imagePath.includes('uploads')) {
+    const baseUrl = 'https://backendeasypresence.onrender.com';
+    if (imagePath.startsWith('/')) {
+      return `${baseUrl}${imagePath}`;
+    } else {
+      return `${baseUrl}/${imagePath}`;
+    }
+  }
+  
+  return imagePath;
+};
+
+// Composant Avatar sécurisé avec gestion améliorée des erreurs
+const SafeAvatar = ({ src, alt, ...props }) => {
+  const [imgError, setImgError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const imageUrl = getImageUrl(src);
+
+  useEffect(() => {
+    setImgError(false);
+    setRetryCount(0);
+  }, [src]);
+
+  const handleError = () => {
+    if (retryCount < 2) {
+      // Réessayer après un délai
+      setTimeout(() => {
+        setImgError(false);
+        setRetryCount(prev => prev + 1);
+      }, 1000 * (retryCount + 1));
+    } else {
+      setImgError(true);
+    }
+  };
+
+  if (!imageUrl || imgError) {
+    return (
+      <Avatar {...props} sx={{ backgroundColor: '#e0e0e0', ...props.sx }}>
+        {alt?.charAt(0)?.toUpperCase() || 'U'}
+      </Avatar>
+    );
+  }
+
+  return (
+    <Avatar
+      {...props}
+      src={imageUrl}
+      alt={alt}
+      onError={handleError}
+      key={`${imageUrl}-${retryCount}`} // Force le re-render quand l'URL change
+    />
+  );
+};
+
+// Hook personnalisé pour la gestion des formulaires avec gestion améliorée des URLs
+const useUserForm = (initialUser = null) => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'employe',
+    position: '',
+    number: '',
+    qg: '',
+    workLocation: '',
+    contractStart: '',
+    contractEnd: '',
+    salary: '',
+    contractType: 'CDI',
+    activity: '',
+    activityBy: '',
+    activityDeadline: '',
+    birthday: '',
+    mentor: '',
+    manager: '',
+    nationality: ''
+  });
+
+  const [errors, setErrors] = useState({});
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
+  // Nettoyer les URLs temporaires
+  useEffect(() => {
+    return () => {
+      // Nettoyage des URLs temporaires quand le composant est démonté
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, []);
+
+  // Initialiser le formulaire avec les données de l'utilisateur
+  useEffect(() => {
+    if (initialUser) {
+      setFormData({
+        name: initialUser.name || '',
+        email: initialUser.email || '',
+        password: '', // Mot de passe vide pour l'édition
+        role: initialUser.role || 'employe',
+        position: initialUser.position || '',
+        number: initialUser.number || '',
+        qg: initialUser.qg || '',
+        workLocation: initialUser.workLocation || '',
+        contractStart: formatDateForInput(initialUser.contractStart),
+        contractEnd: formatDateForInput(initialUser.contractEnd),
+        salary: initialUser.salary || '',
+        contractType: initialUser.contractType || 'CDI',
+        activity: initialUser.activity || '',
+        activityBy: initialUser.activityBy || '',
+        activityDeadline: formatDateForInput(initialUser.activityDeadline),
+        birthday: formatDateForInput(initialUser.birthday),
+        mentor: initialUser.mentor || '',
+        manager: initialUser.manager || '',
+        nationality: initialUser.nationality || ''
+      });
+      // Utiliser l'URL permanente de l'image existante
+      setImagePreview(initialUser.image || initialUser.imageUrl || null);
+    }
+  }, [initialUser]);
+
+  const handleChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+
+    // Effacer l'erreur du champ lorsqu'il est modifié
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const handleImageChange = (file) => {
+    // Nettoyer l'ancienne URL temporaire
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    
+    setImage(file);
+    if (file) {
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+    } else {
+      setImagePreview(null);
+    }
+  };
+
+  const validateForm = () => {
+    const validation = validateUserForm(formData, !!initialUser);
+    setErrors(validation.errors);
+    return validation.isValid;
+  };
+
+  const resetForm = () => {
+    // Nettoyer l'URL temporaire
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setFormData({
+      name: '',
+      email: '',
+      password: '',
+      role: 'employe',
+      position: '',
+      number: '',
+      qg: '',
+      workLocation: '',
+      contractStart: '',
+      contractEnd: '',
+      salary: '',
+      contractType: 'CDI',
+      activity: '',
+      activityBy: '',
+      activityDeadline: '',
+      birthday: '',
+      mentor: '',
+      manager: '',
+      nationality: ''
+    });
+    setImage(null);
+    setImagePreview(null);
+    setErrors({});
+  };
+
+  return {
+    formData,
+    errors,
+    image,
+    imagePreview,
+    handleChange,
+    handleImageChange,
+    validateForm,
+    resetForm,
+    setFormData
+  };
+};
+
+// Intercepteur axios pour ajouter le token automatiquement
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Gestionnaire d'erreurs global amélioré
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const message = error.response?.data?.message || 'Erreur serveur';
+
+    switch (status) {
+      case 401:
+        handleLogout();
+        break;
+      case 403:
+        break;
+      case 404:
+        break;
+      case 500:
+        break;
+      default:
+        break;
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Fonctions utilitaires
 const handleLogout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('userId');
@@ -62,7 +413,6 @@ const handleLogout = () => {
   window.location.href = '/login';
 };
 
-//// Utilitaire pour nettoyer le container temporaire
 const cleanupTempContainer = (root, container) => {
   try {
     if (root) root.unmount();
@@ -72,7 +422,6 @@ const cleanupTempContainer = (root, container) => {
   }
 };
 
-// Exportation du QR code de l'entreprise en PNG
 const exportCompanyQrToPng = () => {
   const tempContainer = document.createElement('div');
   document.body.appendChild(tempContainer);
@@ -83,7 +432,6 @@ const exportCompanyQrToPng = () => {
   setTimeout(() => {
     const svgElement = tempContainer.querySelector('svg');
     if (!svgElement) {
-      toast.error('Erreur : Élément SVG QR non trouvé !');
       cleanupTempContainer(root, tempContainer);
       return;
     }
@@ -106,17 +454,14 @@ const exportCompanyQrToPng = () => {
       document.body.removeChild(link);
 
       cleanupTempContainer(root, tempContainer);
-      toast.success('QR code exporté en PNG avec succès !');
     };
 
     img.onerror = () => {
-      toast.error('Erreur lors de la génération du PNG !');
       cleanupTempContainer(root, tempContainer);
     };
   }, 200);
 };
 
-// Exportation du QR code de l'entreprise en PDF
 const exportCompanyQrToPdf = () => {
   const tempContainer = document.createElement('div');
   document.body.appendChild(tempContainer);
@@ -127,7 +472,6 @@ const exportCompanyQrToPdf = () => {
   setTimeout(() => {
     const svgElement = tempContainer.querySelector('svg');
     if (!svgElement) {
-      toast.error('Erreur : Élément SVG QR non trouvé !');
       cleanupTempContainer(root, tempContainer);
       return;
     }
@@ -154,357 +498,547 @@ const exportCompanyQrToPdf = () => {
       pdf.save('QRCode_Entreprise.pdf');
 
       cleanupTempContainer(root, tempContainer);
-      toast.success('PDF exporté avec succès !');
     };
 
     img.onerror = () => {
-      toast.error('Erreur lors de la génération du PDF !');
       cleanupTempContainer(root, tempContainer);
     };
   }, 200);
 };
 
-// Exportation du QR code d'un membre en PDF
 const exportQrToPdf = (contact) => {
-  const qrContainer = document.getElementById(`qr-${contact._id}`);
-  if (!qrContainer) return;
-  const svgElement = qrContainer.querySelector('svg');
-  if (!svgElement) return;
+  if (!contact || !contact._id) {
+    return;
+  }
 
-  const svgStr = new XMLSerializer().serializeToString(svgElement);
-  const img = new Image();
-  img.src = 'data:image/svg+xml;base64,' + window.btoa(svgStr);
+  const tempContainer = document.createElement('div');
+  document.body.appendChild(tempContainer);
 
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    canvas.getContext('2d').drawImage(img, 0, 0);
+  const root = ReactDOM.createRoot(tempContainer);
+  root.render(<QRCodeSVG value={contact._id} size={100} />);
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    pdf.setFontSize(18);
-    pdf.text(`QR Code de ${contact.name}`, pageWidth / 2, 20, { align: 'center' });
-
-    const pdfWidth = 100;
-    const pdfHeight = (img.height * pdfWidth) / img.width;
-    const x = (pageWidth - pdfWidth) / 2;
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, 30, pdfWidth, pdfHeight);
-    pdf.save(`QRCode_${contact.name}.pdf`);
-  };
-
-  img.onerror = () => toast.error('Erreur lors de la génération du PDF !');
-};
-
-
-// Modal pour ajouter/modifier un utilisateur
-// Modal pour ajouter/modifier un utilisateur
-
-const NewEntryModal = ({ open, onClose, onSave, contact }) => {
-  const [name, setName] = useState(contact?.name || '');
-  const [position, setPosition] = useState(contact?.position || '');
-  const [number, setNumber] = useState(contact?.number || '');
-  const [qg, setQG] = useState(contact?.qg || '');
-  const [email, setEmail] = useState(contact?.email || '');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(contact?.role || 'employe');
-  const [image, setImage] = useState(null);
-  const [preview, setPreview] = useState(contact?.imageUrl || null);
-
-  useEffect(() => {
-    if (contact) {
-      setName(contact.name || '');
-      setPosition(contact.position || '');
-      setNumber(contact.number || '');
-      setQG(contact.qg || '');
-      setEmail(contact.email || '');
-      setRole(contact.role || 'employe');
-      setPassword('');
-      setPreview(contact.imageUrl || null);
-      setImage(null);
-    } else {
-      setName('');
-      setPosition('');
-      setNumber('');
-      setQG('');
-      setEmail('');
-      setPassword('');
-      setRole('employe');
-      setPreview(null);
-      setImage(null);
-    }
-  }, [contact, open]);
-
-  // Prévisualisation locale de l'image
-  useEffect(() => {
-    if (!image) return;
-    const objectUrl = URL.createObjectURL(image);
-    setPreview(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [image]);
-
-  const handleSave = async () => {
-    if (!name || !position || !number || !qg) {
-      toast.error('Nom, Position, Numéro et QG sont requis');
+  setTimeout(() => {
+    const svgElement = tempContainer.querySelector('svg');
+    if (!svgElement) {
+      cleanupTempContainer(root, tempContainer);
       return;
     }
 
-    if (!contact?._id && (!email || !password)) {
-      toast.error('Email et mot de passe requis pour un nouvel utilisateur');
+    const svgStr = new XMLSerializer().serializeToString(svgElement);
+    const img = new Image();
+    img.src = 'data:image/svg+xml;base64,' + window.btoa(svgStr);
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      pdf.setFontSize(18);
+      pdf.text(`QR Code de ${contact.name || 'Utilisateur'}`, pageWidth / 2, 20, { align: 'center' });
+
+      const pdfWidth = 100;
+      const pdfHeight = (img.height * pdfWidth) / img.width;
+      const x = (pageWidth - pdfWidth) / 2;
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', x, 30, pdfWidth, pdfHeight);
+      pdf.save(`QRCode_${contact.name || 'Utilisateur'}.pdf`);
+
+      cleanupTempContainer(root, tempContainer);
+    };
+
+    img.onerror = () => {
+      cleanupTempContainer(root, tempContainer);
+    };
+  }, 200);
+};
+
+// Composant de chargement
+const LoadingSpinner = ({ size = 40, color = '#4A2C2A' }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 2
+    }}
+  >
+    <CircularProgress size={size} sx={{ color }} />
+  </Box>
+);
+
+// Modal pour ajouter/modifier un utilisateur
+const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
+  const {
+    formData,
+    errors,
+    image,
+    imagePreview,
+    handleChange,
+    handleImageChange,
+    validateForm,
+    resetForm
+  } = useUserForm(contact);
+
+  const [loading, setLoading] = useState(false);
+  const { buttonColor } = useContext(CustomizationContext);
+
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open, resetForm]);
+
+  const handleSave = async () => {
+    if (!validateForm()) {
+      showSnackbar('Veuillez corriger les erreurs dans le formulaire', 'error');
       return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-      toast.error('Token manquant, veuillez vous reconnecter !');
+      showSnackbar('Token manquant, veuillez vous reconnecter !', 'error');
+      handleLogout();
       return;
     }
 
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('position', position);
-    formData.append('number', number);
-    formData.append('qg', qg);
-    formData.append('role', role);
-    if (!contact?._id) {
-      formData.append('email', email);
-      formData.append('password', password);
-    }
-    if (image) formData.append('image', image);
+    setLoading(true);
 
     try {
-      let updatedUser = {};
-      if (!contact?._id) {
-        const res = await axios.post(
-          'https://backendeasypresence.onrender.com/api/auth/register-user',
-          formData,
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
-        );
-        toast.success(res.data.message || 'Utilisateur créé !');
-        updatedUser = {
-          name, position, number, qg, role, email,
-          _id: res.data.userId,
-          imageUrl: res.data.imageUrl || null
-        };
-      } else {
-        const res = await axios.put(
-          `https://backendeasypresence.onrender.com/api/auth/update-user/${contact._id}`,
-          formData,
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
-        );
-        toast.success('Utilisateur modifié !');
-        // Utiliser l'URL renvoyée par le serveur si nouvelle image
-        updatedUser = {
-          ...contact,
-          name, position, number, qg, role,
-          imageUrl: res.data.imageUrl || preview
-        };
+      const formDataToSend = new FormData();
+      
+      // Ajouter tous les champs au FormData
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== '' && formData[key] !== null && formData[key] !== undefined) {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+      
+      // Si pas de nouvelle image mais on a une imagePreview existante (édition)
+      if (!image && imagePreview && !imagePreview.startsWith('blob:')) {
+        // Conserver l'URL existante de l'image
+        formDataToSend.append('existingImage', imagePreview);
       }
-      onSave(updatedUser);
+      
+      if (image) formDataToSend.append('image', image);
+
+      let response;
+      if (!contact?._id) {
+        response = await axios.post(API_REGISTER, formDataToSend, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        showSnackbar('Utilisateur créé avec succès !', 'success');
+      } else {
+        response = await axios.put(`${API_UPDATE_USER}/${contact._id}`, formDataToSend, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        showSnackbar('Utilisateur modifié avec succès !', 'success');
+      }
+
+      onSave(response.data.user || response.data);
       onClose();
-    } catch (err) {
-      console.error('Erreur handleSaveNewEntry:', err);
-      toast.error(err.response?.data?.message || 'Erreur inconnue');
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.errors?.join(', ') || 
+                          'Erreur lors de la sauvegarde';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-<Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-  <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>
-    {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
-  </DialogTitle>
-
-  <DialogContent>
-    <Stack spacing={3} alignItems="stretch">
-
-      {/* Avatar */}
-      <Box sx={{ position: 'relative', width: 120, height: 120, mx: 'auto' }}>
-        {preview ? (
-          <>
-            <img
-              src={preview}
-              alt="Aperçu"
-              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-            />
-            <IconButton
-              size="small"
-              onClick={() => { setImage(null); setPreview(null); }}
-              sx={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(255,255,255,0.8)' }}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </>
-        ) : (
-          <IconButton
-            component="label"
-            sx={{
-              borderRadius: '50%',
-              border: '2px dashed #ccc',
-              width: 120,
-              height: 120,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            <PhotoCamera fontSize="large" />
-            <input hidden accept="image/*" type="file" onChange={(e) => setImage(e.target.files[0])} />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Champs côte à côte */}
-      <Stack direction="row" spacing={2}>
-        <TextField label="Nom complet" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-        <TextField label="Position" value={position} onChange={(e) => setPosition(e.target.value)} fullWidth />
-      </Stack>
-
-      <Stack direction="row" spacing={2}>
-        <TextField label="Numéro" value={number} onChange={(e) => setNumber(e.target.value)} fullWidth />
-        <TextField label="QG" value={qg} onChange={(e) => setQG(e.target.value)} fullWidth />
-      </Stack>
-
-      <Stack direction="row" spacing={2}>
-        <TextField label="Email" value={email} onChange={(e) => setEmail(e.target.value)} fullWidth />
-        {!contact && <TextField label="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} fullWidth type="password" />}
-      </Stack>
-
-      {/* Rôle */}
-      <FormControl fullWidth>
-        <InputLabel>Rôle</InputLabel>
-        <Select value={role} onChange={(e) => setRole(e.target.value)}>
-          <MenuItem value="admin">Admin</MenuItem>
-          <MenuItem value="employe">Employé</MenuItem>
-        </Select>
-      </FormControl>
-
-    </Stack>
-  </DialogContent>
-
-  <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
-    <Button onClick={onClose} variant="outlined" sx={{ px: 3, py: 1 }}>
-      Annuler
-    </Button>
-    <Button
-      onClick={handleSave}
-      variant="contained"
-      sx={{
-        px: 3,
-        py: 1,
-        background: 'linear-gradient(135deg, #4A2C2A, #9A616D)',
-        '&:hover': { background: 'linear-gradient(135deg, #7B3F51, #B86A82)' },
-      }}
+  const renderField = (field, label, type = 'text', options = null) => (
+    <TextField
+      label={label}
+      value={formData[field]}
+      onChange={(e) => handleChange(field, e.target.value)}
+      fullWidth
+      type={type}
+      error={!!errors[field]}
+      helperText={errors[field]}
+      InputLabelProps={type === 'date' ? { shrink: true } : {}}
+      select={!!options}
     >
-      Enregistrer
-    </Button>
-  </DialogActions>
-</Dialog>
+      {options && options.map(option => (
+        <MenuItem key={option.value} value={option.value}>
+          {option.label}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
 
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
+      <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>
+        {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
+      </DialogTitle>
 
+      <DialogContent>
+        <Stack spacing={3} alignItems="stretch">
+          {/* Avatar amélioré */}
+          <Box sx={{ position: 'relative', width: 120, height: 120, mx: 'auto' }}>
+            {imagePreview ? (
+              <>
+                <SafeAvatar 
+                  src={imagePreview} 
+                  alt="Aperçu" 
+                  sx={{ width: 120, height: 120 }} 
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => handleImageChange(null)}
+                  sx={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(255,255,255,0.8)' }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton
+                component="label"
+                sx={{
+                  borderRadius: '50%',
+                  border: '2px dashed #ccc',
+                  width: 120,
+                  height: 120,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <PhotoCamera fontSize="large" />
+                <input 
+                  hidden 
+                  accept="image/*" 
+                  type="file" 
+                  onChange={(e) => handleImageChange(e.target.files[0])} 
+                />
+              </IconButton>
+            )}
+          </Box>
+
+          {/* Informations de base */}
+          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
+            Informations de base
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('name', 'Nom complet *')}
+            {renderField('position', 'Position *')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('number', 'Numéro *')}
+            {renderField('qg', 'QG *')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('email', 'Email *', 'email')}
+            {!contact && renderField('password', 'Mot de passe *', 'password')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('role', 'Rôle', 'select', USER_ROLES)}
+            {renderField('nationality', 'Nationalité')}
+          </Stack>
+
+          {/* Informations professionnelles */}
+          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
+            Informations professionnelles
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('workLocation', 'Lieu de travail')}
+            {renderField('contractType', 'Type de contrat', 'select', CONTRACT_TYPES)}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('contractStart', 'Début du contrat', 'date')}
+            {renderField('contractEnd', 'Fin du contrat', 'date')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('salary', 'Salaire', 'number')}
+            {renderField('manager', 'Manager')}
+          </Stack>
+
+          {/* Relations et activités */}
+          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
+            Relations et activités
+          </Typography>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('mentor', 'Mentor')}
+            {renderField('activityBy', 'Activité assignée par')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('activity', 'Activité en cours', 'text')}
+            {renderField('activityDeadline', 'Date limite activité', 'date')}
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            {renderField('birthday', 'Anniversaire', 'date')}
+          </Stack>
+        </Stack>
+      </DialogContent>
+
+      <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
+        <Button 
+          onClick={onClose} 
+          variant="outlined" 
+          sx={{ px: 3, py: 1 }}
+          disabled={loading}
+        >
+          Annuler
+        </Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={loading}
+          sx={{
+            px: 3,
+            py: 1,
+            backgroundColor: buttonColor,
+            '&:hover': { backgroundColor: buttonColor, opacity: 0.9 },
+            '&:disabled': { opacity: 0.6 }
+          }}
+        >
+          {loading ? 'Enregistrement...' : 'Enregistrer'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
-
-
-// Modal pour afficher l'historique
+// Modal pour afficher l'historique amélioré
 const HistoryModal = ({ open, onClose, contact }) => {
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { buttonColor } = useContext(CustomizationContext);
+
+  useEffect(() => {
+    if (open && contact) {
+      fetchHistory();
+    }
+  }, [open, contact]);
+
+  const fetchHistory = async () => {
+    if (!contact?._id) return;
+    
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_PRESENCES}?userId=${contact._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setHistory(response.data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement de l\'historique:', error);
+      setHistory(contact.history || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour contacter l'utilisateur
+  const handleContact = (type) => {
+    if (!contact) return;
+    
+    if (type === 'call' && contact.number) {
+      window.open(`tel:${contact.number}`, '_self');
+    } else if (type === 'chat' && contact.number) {
+      // Ouvrir WhatsApp avec le numéro
+      window.open(`https://wa.me/${contact.number.replace(/\s/g, '')}`, '_blank');
+    } else {
+      alert(`Fonction ${type} non disponible pour cet utilisateur`);
+    }
+  };
+
   if (!contact) return null;
 
   return (
-<Dialog
-  open={open}
-  onClose={onClose}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{ style: { borderRadius: 5, padding: 20 } }}
->
-  {/* Titre avec nom */}
-<Box sx={{ textAlign: 'center', mb: 3 }}>
-  <span
-    style={{
-      display: 'block',
-      fontWeight: 700,
-      fontSize: 20,
-      color: '#2c2c2c',
-      letterSpacing: 0.5,
-      marginBottom: 4,
-    }}
-  >
-    Historique
-  </span>
-  <span
-    style={{
-      display: 'inline-block',
-      fontSize: 14,
-      color: '#6b7280',
-      fontWeight: 500,
-      padding: '2px 10px',
-      borderRadius: 12,
-      backgroundColor: '#f3f4f6',
-    }}
-  >
-    {contact.name}
-  </span>
-</Box>
-
-
-  {/* Contenu */}
-  <DialogContent>
-    {(!contact.history || contact.history.length === 0) ? (
-      <p style={{ textAlign: 'center', color: '#6b7280', marginTop: 20 }}>
-        Aucun historique pour ce membre.
-      </p>
-    ) : (
-      <Stack spacing={1} mt={1}>
-        {contact.history.map((entry, idx) => (
-          <Box
-            key={idx}
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '10px 15px',
-              borderRadius: 2,
-              backgroundColor: idx % 2 === 0 ? '#f3f4f6' : '#fff',
-              fontWeight: 500,
-            }}
-          >
-            <span>{entry.date}</span>
-            <span style={{ color: entry.present ? '#16a34a' : '#dc2626', fontWeight: 'bold' }}>
-              {entry.present ? `✅ Présent à ${entry.time || '--:--'}` : '❌ Absent'}
-            </span>
-          </Box>
-        ))}
-      </Stack>
-    )}
-  </DialogContent>
-
-  {/* Bouton Fermer */}
-  <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
-    <Button
-      onClick={onClose}
-      sx={{
-        background: 'linear-gradient(135deg, #4A2C2A, #9A616D)',
-        color: 'white',
-        borderRadius: 2,
-        px: 3,
-        py: 1.2,
-        fontWeight: 'bold',
-        fontSize: 14,
-        '&:hover': { background: 'linear-gradient(135deg, #7B3F51, #B86A82)' },
-      }}
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ style: { borderRadius: 15, padding: 20 } }}
     >
-      Fermer
-    </Button>
-  </DialogActions>
-</Dialog>
+      {/* En-tête amélioré avec photo et informations de contact */}
+      <Box sx={{ textAlign: 'center', mb: 3, position: 'relative' }}>
+        {/* Photo de profil et informations */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+          <SafeAvatar
+            src={contact.image || contact.imageUrl}
+            alt={contact.name}
+            sx={{ 
+              width: 80, 
+              height: 80, 
+              border: `3px solid ${buttonColor}`,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+          />
+        </Box>
 
+        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#2c2c2c', mb: 1 }}>
+          {contact.name}
+        </Typography>
+        
+        <Typography variant="body1" sx={{ color: '#6b7280', mb: 2 }}>
+          {contact.position}
+        </Typography>
 
+        {/* Boutons de contact */}
+        <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 2 }}>
+          <Tooltip title={`Appeler ${contact.number || ''}`}>
+            <IconButton 
+              onClick={() => handleContact('call')}
+              sx={{ 
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                '&:hover': { backgroundColor: '#45a049' },
+                borderRadius: '50%',
+                width: 50,
+                height: 50
+              }}
+            >
+              <PhoneIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title={`Envoyer un message à ${contact.name}`}>
+            <IconButton 
+              onClick={() => handleContact('chat')}
+              sx={{ 
+                backgroundColor: '#25D366',
+                color: 'white',
+                '&:hover': { backgroundColor: '#20bd5a' },
+                borderRadius: '50%',
+                width: 50,
+                height: 50
+              }}
+            >
+              <ChatIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+
+        <Chip 
+          label="Historique de présence" 
+          sx={{ 
+            backgroundColor: buttonColor, 
+            color: 'white',
+            fontWeight: 'bold'
+          }} 
+        />
+      </Box>
+
+      <DialogContent>
+        {loading ? (
+          <LoadingSpinner />
+        ) : history.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <HistoryIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
+            <Typography variant="body1" color="textSecondary">
+              Aucun historique de présence pour ce membre.
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+            <Stack spacing={1}>
+              {history.map((entry, idx) => (
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    borderRadius: 3,
+                    backgroundColor: idx % 2 === 0 ? '#f8f9fa' : '#fff',
+                    border: '1px solid #e9ecef',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: '#e3f2fd',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                    }
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      sx={{
+                        width: 12,
+                        height: 12,
+                        borderRadius: '50%',
+                        backgroundColor: entry.present ? '#4CAF50' : '#f44336'
+                      }}
+                    />
+                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                      {new Date(entry.date).toLocaleDateString('fr-FR', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {entry.present ? (
+                      <>
+                        <CheckIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+                        <Typography variant="body1" sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                          Présent à {entry.time || '--:--'}
+                        </Typography>
+                      </>
+                    ) : (
+                      <>
+                        <CloseIcon sx={{ color: '#f44336', fontSize: 20 }} />
+                        <Typography variant="body1" sx={{ color: '#f44336', fontWeight: 'bold' }}>
+                          Absent
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Stack>
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ justifyContent: 'center', mt: 2, pb: 3 }}>
+        <Button
+          onClick={onClose}
+          sx={{
+            backgroundColor: buttonColor,
+            color: 'white',
+            borderRadius: 3,
+            px: 4,
+            py: 1.2,
+            fontWeight: 'bold',
+            fontSize: 14,
+            '&:hover': { backgroundColor: buttonColor, opacity: 0.9 },
+          }}
+        >
+          Fermer
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
 // Modal pour scanner les QR codes
-const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
+const QrScannerModal = ({ open, onClose, onScanSuccess, showSnackbar }) => {
   const qrCodeRegionId = "html5qr-code-full-region";
   const html5QrCodeRef = React.useRef(null);
   const isScanningRef = React.useRef(false);
@@ -538,7 +1072,6 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
           handleError
         );
       } catch {
-        // fallback caméra front
         try {
           isScanningRef.current = true;
           await html5QrCodeRef.current.start(
@@ -548,13 +1081,12 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
             handleError
           );
         } catch {
-          toast.error("Impossible d'accéder à la caméra.");
+          showSnackbar("Impossible d'accéder à la caméra.", 'error');
           isScanningRef.current = false;
         }
       }
     };
 
-    // Délai pour que le div soit monté
     const timeout = setTimeout(startScanner, 100);
 
     return () => {
@@ -564,7 +1096,7 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
         isScanningRef.current = false;
       }
     };
-  }, [open, onClose, onScanSuccess]);
+  }, [open, onClose, onScanSuccess, showSnackbar]);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -579,10 +1111,81 @@ const QrScannerModal = ({ open, onClose, onScanSuccess }) => {
   );
 };
 
+// Fonction de recherche améliorée
+const searchInContacts = (contacts, searchTerm) => {
+  if (!searchTerm.trim()) return contacts;
 
+  const searchLower = searchTerm.toLowerCase().trim();
+  
+  return contacts.filter(contact => {
+    // Recherche dans tous les champs de base
+    const basicFields = [
+      contact.name,
+      contact.position,
+      contact.number,
+      contact.qg,
+      contact.email,
+      contact.workLocation,
+      contact.contractType,
+      contact.activity,
+      contact.activityBy,
+      contact.mentor,
+      contact.manager,
+      contact.nationality
+    ];
+
+    // Vérification des champs de base
+    if (basicFields.some(field => field && field.toString().toLowerCase().includes(searchLower))) {
+      return true;
+    }
+
+    // Recherche dans les dates formatées
+    const dateFields = [
+      formatDateForDisplay(contact.contractStart),
+      formatDateForDisplay(contact.contractEnd),
+      formatDateForDisplay(contact.activityDeadline),
+      formatDateForDisplay(contact.birthday)
+    ];
+
+    if (dateFields.some(date => date && date.toLowerCase().includes(searchLower))) {
+      return true;
+    }
+
+    // Recherche dans le salaire formaté
+    const salaryFormatted = formatSalary(contact.salary);
+    if (salaryFormatted && salaryFormatted.toLowerCase().includes(searchLower)) {
+      return true;
+    }
+
+    // Recherche dans le statut de présence
+    const status = contact.presentToday ? "présent" : "absent";
+    if (status.includes(searchLower)) {
+      return true;
+    }
+
+    return false;
+  });
+};
 
 // Composant principal Dashboard
 const Dashboard = () => {
+  const {
+    customTitle,
+    customLogo,
+    logoPosition,
+    logoSize,
+    titleColor,
+    titleFont,
+    titleSize,
+    formBgColor,
+    buttonColor,
+    pageBg,
+    pageBgImage,
+    globalFont,
+    boxShadow,
+    borderRadiusGlobal,
+  } = useContext(CustomizationContext);
+
   const [contacts, setContacts] = useState([]);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isNewEntryModalOpen, setNewEntryModalOpen] = useState(false);
@@ -595,281 +1198,337 @@ const Dashboard = () => {
   const [activeFilter, setActiveFilter] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-const [openFilters, setOpenFilters] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [notificationsAnchor, setNotificationsAnchor] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
   const today = new Date().toISOString().split('T')[0];
 
-const findUserById = (id) => {
-  if (!contacts || contacts.length === 0) return null;
-  return contacts.find(c => c._id === id) || null;
-};
+  // Fonction pour afficher les snackbars
+  const showSnackbar = (message, severity = 'info') => {
+    setSnackbar({ open: true, message, severity });
+  };
 
+  // Récupérer le profil admin
+  useEffect(() => {
+    const userEmail = localStorage.getItem('email');
+    const userName = localStorage.getItem('userName') || 'Administrateur';
+    setAdminProfile({
+      name: userName,
+      email: userEmail,
+      role: 'admin',
+      status: 'En ligne'
+    });
+  }, []);
 
+  // Simuler des notifications
+  useEffect(() => {
+    const sampleNotifications = [
+      {
+        id: 1,
+        message: "Nouvel utilisateur ajouté: Jean Dupont",
+        timestamp: new Date(Date.now() - 1000 * 60 * 30),
+        read: false
+      },
+      {
+        id: 2,
+        message: "Présence marquée pour Marie Curie",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+        read: false
+      },
+      {
+        id: 3,
+        message: "Rapport de présence généré",
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
+        read: true
+      }
+    ];
+    setNotifications(sampleNotifications);
+  }, []);
 
-useEffect(() => {
+  const unreadNotificationsCount = notifications.filter(notification => !notification.read).length;
+
+  const findUserById = (id) => {
+    if (!contacts || contacts.length === 0) return null;
+    return contacts.find(c => c._id === id) || null;
+  };
+
+  // Chargement initial des contacts avec rechargement périodique
+  useEffect(() => {
+    fetchContactsAndPresences();
+    
+    // Recharger les données toutes les 5 minutes pour rafraîchir les images
+    const interval = setInterval(() => {
+      fetchContactsAndPresences();
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchContactsAndPresences = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const contactsRes = await axios.get(API_USERS, { headers: { Authorization: `Bearer ${token}` } });
-      const contactsData = contactsRes.data || [];
+      
+      if (!token) {
+        showSnackbar('Token manquant. Redirection vers la connexion...', 'error');
+        handleLogout();
+        return;
+      }
 
-      // Mettre à jour contacts
-      setContacts(contactsData);
-      localStorage.setItem('contacts', JSON.stringify(contactsData));
+      const contactsRes = await axios.get(API_USERS, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
+      let contactsData = contactsRes.data || [];
 
-      // Charger les présences du jour
+      // FILTRE : Exclure l'utilisateur admin courant du tableau
+      const currentUserEmail = localStorage.getItem('email');
+      contactsData = contactsData.filter(user => user.email !== currentUserEmail);
+
       const today = new Date().toISOString().split('T')[0];
-      const presencesRes = await axios.get(`${API_PRESENCES}?date=${today}`, { headers: { Authorization: `Bearer ${token}` } });
+      const presencesRes = await axios.get(`${API_PRESENCES}?date=${today}`, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
       const presencesData = presencesRes.data || [];
 
-      // Fusionner présences dans contacts
       const merged = contactsData.map(user => {
-        const presence = presencesData.find(p => p.userId?._id === user._id);
+        const presence = presencesData.find(p => 
+          p.userId?._id === user._id || 
+          p.userId === user._id ||
+          p.user?._id === user._id
+        );
+        
+        // S'assurer que l'URL de l'image est permanente
+        const imageUrl = getImageUrl(user.image);
+        const permanentImageUrl = imageUrl && imageUrl.startsWith('blob:') 
+          ? null // Éviter les URLs blob temporaires
+          : imageUrl;
+        
         return {
           ...user,
-          history: presence ? [{ date: today, present: presence.present, time: presence.time || '--:--' }] : []
+          presentToday: presence ? presence.present : false,
+          history: presence ? [{ 
+            date: today, 
+            present: presence.present, 
+            time: presence.time || '--:--' 
+          }] : [],
+          image: permanentImageUrl,
+          imageUrl: permanentImageUrl, // Utiliser la même URL permanente
+          workLocation: user.workLocation || '',
+          contractStart: user.contractStart || '',
+          contractEnd: user.contractEnd || '',
+          salary: user.salary || '',
+          contractType: user.contractType || '',
+          activity: user.activity || '',
+          activityBy: user.activityBy || '',
+          activityDeadline: user.activityDeadline || '',
+          birthday: user.birthday || '',
+          mentor: user.mentor || '',
+          manager: user.manager || '',
+          nationality: user.nationality || ''
         };
       });
 
       setContacts(merged);
       localStorage.setItem('contacts', JSON.stringify(merged));
-    } catch (err) {
-      console.error("Erreur fetchContactsAndPresences:", err);
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error);
+      const errorMessage = error.response?.data?.message || 'Erreur de connexion au serveur';
+      showSnackbar(errorMessage, 'error');
+      
       const stored = localStorage.getItem('contacts');
-      if (stored) setContacts(JSON.parse(stored));
+      if (stored) {
+        let storedContacts = JSON.parse(stored);
+        // Appliquer le même filtre admin sur les données stockées
+        const currentUserEmail = localStorage.getItem('email');
+        storedContacts = storedContacts.filter(user => user.email !== currentUserEmail);
+        setContacts(storedContacts);
+        showSnackbar('Données locales chargées (mode hors ligne)', 'info');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  fetchContactsAndPresences();
-}, []);
-
-
-
-
-
-
-// Fonction utilitaire : sauvegarde côté Auth
-
-
-
-
-const registerAuthUser = async (newEntry) => {
-  const payload = {
-    name: newEntry.name,
-    email: newEntry.email,
-    password: newEntry.password,
-    role: newEntry.role || "employe",
-    phone: newEntry.phone,
-    qg: newEntry.qg,
+  const handleSaveNewEntry = async (newEntry) => {
+    try {
+      await fetchContactsAndPresences();
+    } catch (error) {
+      console.error('Erreur après sauvegarde:', error);
+    }
   };
 
-  const res = await axios.post("https://backendeasypresence.onrender.com/api/auth/register-user", payload);
-  return res.data.userId; // renvoie l'ID créé par MongoDB
-};
-
-// À mettre DANS le composant Dashboard
-const handleSaveNewEntry = async (newEntry) => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast.error("Token manquant, veuillez vous reconnecter !");
+  const handleDeleteMember = async (id) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.')) {
       return;
     }
 
-    const isNew = !newEntry._id;
-
-    // Préparer les données à envoyer à l'API
-    const payload = {
-      name: newEntry.name,
-      position: newEntry.position,
-      number: newEntry.number,
-      qg: newEntry.qg,
-      role: newEntry.role || "employe",
-    };
-
-    if (isNew) {
-      // Ajouter email et password pour création
-      payload.email = newEntry.email;
-      payload.password = newEntry.password;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_USERS}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setContacts(prev => prev.filter(contact => contact._id !== id));
+      showSnackbar('Utilisateur supprimé avec succès !', 'success');
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      const errorMessage = error.response?.data?.message || 'Erreur lors de la suppression';
+      showSnackbar(errorMessage, 'error');
     }
+  };
 
-    let response;
-    if (isNew) {
-      // Création utilisateur
-      response = await axios.post(
-        "https://backendeasypresence.onrender.com/api/auth/register-user",
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      payload._id = response.data.userId;
-      toast.success("Utilisateur ajouté !");
-    } else {
-      // Modification utilisateur
-      response = await axios.put(
-        `https://backendeasypresence.onrender.com/api/auth/update-user/${newEntry._id}`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      payload._id = newEntry._id;
-      toast.success("Utilisateur mis à jour !");
+  const handleTogglePresence = async (memberId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const currentTime = new Date().toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+
+      const user = findUserById(memberId);
+      const isCurrentlyPresent = user?.presentToday;
+
+      const response = await axios.post(API_PRESENCES, {
+        userId: memberId,
+        date: today,
+        present: !isCurrentlyPresent,
+        time: currentTime
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setContacts(prev => prev.map(contact => {
+        if (contact._id === memberId) {
+          const updatedHistory = contact.history || [];
+          const todayIndex = updatedHistory.findIndex(h => h.date === today);
+          
+          if (todayIndex >= 0) {
+            updatedHistory[todayIndex] = { 
+              date: today, 
+              present: !isCurrentlyPresent,
+              time: !isCurrentlyPresent ? currentTime : '--:--'
+            };
+          } else {
+            updatedHistory.push({ 
+              date: today, 
+              present: !isCurrentlyPresent,
+              time: !isCurrentlyPresent ? currentTime : '--:--'
+            });
+          }
+
+          return {
+            ...contact,
+            presentToday: !isCurrentlyPresent,
+            history: updatedHistory
+          };
+        }
+        return contact;
+      }));
+
+      showSnackbar(isCurrentlyPresent ? 'Marqué comme absent' : 'Marqué comme présent', 'success');
+    } catch (error) {
+      console.error('Erreur lors du changement de statut:', error);
+      const errorMessage = error.response?.data?.message || 'Erreur lors du changement de statut';
+      showSnackbar(errorMessage, 'error');
     }
+  };
 
-    // Mise à jour locale dans le state contacts
-    setContacts(prev => {
-      const updated = [...prev.filter(c => c._id !== payload._id), payload];
-      localStorage.setItem("contacts", JSON.stringify(updated));
-      return updated;
-    });
+  const handleScanSuccess = async (decodedText) => {
+    try {
+      const token = localStorage.getItem('token');
+      const currentTime = new Date().toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
 
-  } catch (err) {
-    console.error("Erreur handleSaveNewEntry:", err);
-    if (err.response) {
-      toast.error(`Erreur API: ${err.response.data.message || "inconnue"}`);
-    } else if (err.request) {
-      toast.error("Pas de réponse du serveur.");
-    } else {
-      toast.error(`Erreur inattendue: ${err.message}`);
-    }
-  }
-};
-
-
-
-
-
-
-
-
-
-
-
-  // Suppression d'un membre
-const handleDeleteMember = async (id) => {
-  try {
-    await axios.delete(`${API_DELETE}/${id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-    });
-    const updated = contacts.filter(c => c._id !== id);
-    setContacts(updated);
-    localStorage.setItem('contacts', JSON.stringify(updated));
-    toast.success('Membre supprimé !');
-  } catch (error) {
-    toast.error('Erreur suppression membre : ' + (error.response?.data?.message || error.message));
-  }
-};
-
-  // Bascule de la présence (pour les admins)
-
-// Toggle manuel d’un membre (admin)
-const handleTogglePresence = async (memberId) => {
-  const today = new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-
-  const user = findUserById(memberId);
-  if (!user) return toast.error("Utilisateur non trouvé");
-
-  // MAJ locale (optimistic)
-  const todayIndex = user.history?.findIndex(h => h.date === today);
-  let updatedHistory;
-  if (todayIndex >= 0) {
-    updatedHistory = [...user.history];
-    updatedHistory[todayIndex] = {
-      ...updatedHistory[todayIndex],
-      present: !updatedHistory[todayIndex].present,
-      time: timeStr
-    };
-  } else {
-    updatedHistory = [...(user.history || []), { date: today, present: true, time: timeStr }];
-  }
-
-  setContacts(prev => prev.map(c => c._id === memberId ? { ...c, history: updatedHistory } : c));
-
-  try {
-    await axios.put(`${API_PRESENCES}/${memberId}`, {
-      date: today,
-      present: true,
-      time: timeStr
-    }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-
-    toast.success("Présence mise à jour !");
-  } catch (err) {
-    toast.error("Erreur mise à jour présence");
-    console.error(err);
-  }
-};
-
-
-
-
-
-
-    // Récupération des contacts au chargement
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('https://backendeasypresence.onrender.com/api/auth/users', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setContacts(response.data);
-        localStorage.setItem('contacts', JSON.stringify(response.data));
-      } catch (err) {
-        console.error('Erreur fetch contacts:', err);
+      const cleanedText = decodedText.trim();
+      
+      const user = findUserById(cleanedText);
+      if (!user) {
+        showSnackbar('Utilisateur non trouvé pour ce QR code', 'error');
+        return;
       }
-    };
-    fetchContacts();
-  }, []);
 
-  // Gestion du scan QR
-  // Scan QR code
-const handleScanSuccess = async (decodedText) => {
-  const today = new Date().toISOString().split('T')[0];
-  const now = new Date();
-  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+      const isCurrentlyPresent = user.presentToday;
 
-  const user = findUserById(decodedText);
-  if (!user) return toast.error("Utilisateur non trouvé ou contacts non chargés");
+      const response = await axios.post(API_PRESENCES, {
+        userId: cleanedText,
+        date: today,
+        present: !isCurrentlyPresent,
+        time: currentTime
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-  try {
-    // POST présence côté API
-    await axios.post(API_PRESENCES, {
-      userId: user._id,
-      date: today,
-      present: true,
-      time: timeStr
-    }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      setContacts(prev => prev.map(contact => {
+        if (contact._id === cleanedText) {
+          const updatedHistory = contact.history || [];
+          const todayIndex = updatedHistory.findIndex(h => h.date === today);
+          
+          if (todayIndex >= 0) {
+            updatedHistory[todayIndex] = { 
+              date: today, 
+              present: !isCurrentlyPresent,
+              time: !isCurrentlyPresent ? currentTime : '--:--'
+            };
+          } else {
+            updatedHistory.push({ 
+              date: today, 
+              present: !isCurrentlyPresent,
+              time: !isCurrentlyPresent ? currentTime : '--:--'
+            });
+          }
 
-    // MAJ locale
-    const newHistory = [...(user.history || []), { date: today, present: true, time: timeStr }];
-    const updatedUser = { ...user, history: newHistory };
+          return {
+            ...contact,
+            presentToday: !isCurrentlyPresent,
+            history: updatedHistory
+          };
+        }
+        return contact;
+      }));
 
-    setContacts(prev => prev.map(c => c._id === user._id ? updatedUser : c));
+      showSnackbar(`Scan réussi: ${user.name} marqué comme ${!isCurrentlyPresent ? 'présent' : 'absent'}`, 'success');
+      setScannerOpen(false);
+    } catch (error) {
+      console.error('Erreur lors du scan:', error);
+      const errorMessage = error.response?.data?.message || 'Erreur lors du traitement du scan';
+      showSnackbar(errorMessage, 'error');
+    }
+  };
 
-    toast.success(`${user.name} marqué présent`);
-  } catch (err) {
-    toast.error("Erreur enregistrement présence");
-    console.error(err);
-  }
-};
-
-
-
-
+  // Colonnes sans le rôle admin
   const [allColumns, setAllColumns] = useState([
     { key: 'imageUrl', label: 'Photo', visible: true },
     { key: 'name', label: 'Nom', visible: true },
     { key: 'position', label: 'Position', visible: true },
     { key: 'number', label: 'Numéro', visible: true },
-    { key: 'qg', label: 'QG', visible: false },       // optionnel
-    { key: 'email', label: 'Email', visible: false }, // optionnel
-    { key: 'role', label: 'Rôle', visible: true },
+    { key: 'qg', label: 'QG', visible: false },
+    { key: 'email', label: 'Email', visible: false },
+    { key: 'workLocation', label: 'Lieu de travail', visible: false },
+    { key: 'contractStart', label: 'Début contrat', visible: false },
+    { key: 'contractEnd', label: 'Fin contrat', visible: false },
+    { key: 'salary', label: 'Salaire', visible: false },
+    { key: 'contractType', label: 'Type contrat', visible: false },
+    { key: 'activity', label: 'Activité', visible: false },
+    { key: 'activityBy', label: 'Activité par', visible: false },
+    { key: 'activityDeadline', label: 'Date limite activité', visible: false },
+    { key: 'birthday', label: 'Anniversaire', visible: false },
+    { key: 'mentor', label: 'Mentor', visible: false },
+    { key: 'manager', label: 'Manager', visible: false },
+    { key: 'nationality', label: 'Nationalité', visible: false },
     { key: 'qr', label: 'QR', visible: true },
     { key: 'presentToday', label: 'Statut', visible: true },
     { key: 'actions', label: 'Actions', visible: true },
   ]);
 
- const [anchorEl, setAnchorEl] = useState(null);
   const handleOpen = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -880,539 +1539,904 @@ const handleScanSuccess = async (decodedText) => {
 
   const open = Boolean(anchorEl);
 
-useEffect(() => {
-  const fetchContacts = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get("https://backendeasypresence.onrender.com/api/auth/get-users", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setContacts(res.data);
-    } catch (err) {
-      console.error("Erreur fetchContacts:", err);
-    }
-  };
-  fetchContacts();
-}, []);
+  // Filtrage des données avec recherche améliorée
+  const qgList = ["Tous", ...Array.from(new Set(contacts.map((c) => c.qg).filter(Boolean)))];
 
-// Liste des QG
-const qgList = ["Tous", ...Array.from(new Set(contacts.map((c) => c.qg).filter(Boolean)))];
+  let displayContacts = (filterQG === "Tous" ? contacts : contacts.filter((c) => c.qg === filterQG));
 
-// Filtrage des contacts
-let displayContacts = (filterQG === "Tous" ? contacts : contacts.filter((c) => c.qg === filterQG))
-  .filter(
-    (c) =>
-      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.position?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-  .map((c) => {
-    const todayEntry = c.history?.find((h) => h.date.split("T")[0] === today);
+  // Appliquer la recherche améliorée
+  if (searchTerm.trim()) {
+    displayContacts = searchInContacts(displayContacts, searchTerm);
+  }
+
+  // Appliquer les filtres actifs
+  if (activeFilter && activeFilter !== "Tous") {
+    displayContacts = displayContacts.filter((c) => {
+      if (activeFilter === "Présents") return c.presentToday === true;
+      if (activeFilter === "Absents") return c.presentToday === false;
+      if (activeFilter === "QG A") return c.qg === "A";
+      if (activeFilter === "QG B") return c.qg === "B";
+      return true;
+    });
+  }
+
+  // Mettre à jour le statut présent/absent pour l'affichage
+  displayContacts = displayContacts.map((c) => {
+    const todayEntry = c.history?.find((h) => h.date === today);
     return { ...c, presentToday: todayEntry ? todayEntry.present : false };
   });
 
-if (activeFilter && activeFilter !== "Tous") {
-  displayContacts = displayContacts.filter((c) => {
-    if (activeFilter === "Présents") return c.presentToday === true;
-    if (activeFilter === "Absents") return c.presentToday === false;
-    if (activeFilter === "QG A") return c.qg === "A";
-    if (activeFilter === "QG B") return c.qg === "B";
-    return true;
-  });
-}
-
   return (
     <>
-
-
-
-      <ToastContainer />
-      <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
- <header
-  style={{
-    position: "fixed",
-    top: 0,
-    left: isSidebarOpen ? 220 : 70,
-    right: 0,
-    zIndex: 100,
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    padding: "10px 20px",
-    backgroundColor: "#fff",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    transition: "left 0.3s ease",
-  }}
->
-  {/* Barre principale */}
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 10,
-    }}
-  >
-    {/* Barre de recherche */}
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        flex: 1,
-        backgroundColor: "#f5f5f5",
-        borderRadius: 20,
-        padding: "4px 10px",
-      }}
-    >
-      <SearchIcon style={{ color: "#555", marginRight: 6 }} />
-      <TextField
-        placeholder="Rechercher un membre..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        variant="standard"
-        InputProps={{ disableUnderline: true }}
-        sx={{
-          flex: 1,
-          "& input": { fontSize: 14, color: "#333" },
-        }}
-      />
-    </div>
-
-    {/* Boutons */}
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <Button
-        variant="contained"
-        onClick={() => {
-          setSelectedContact(null);
-          setNewEntryModalOpen(true);
-        }}
-        startIcon={<AddIcon />}
-        sx={{
-          backgroundColor: "#4A2C2A",
-          color: "#fff",
-          borderRadius: "8px",
-          textTransform: "none",
-          fontSize: 14,
-          "&:hover": { backgroundColor: "#6b3f3d" },
+      <div 
+        style={{
+          fontFamily: globalFont,
+          background: pageBg,
+          backgroundImage: pageBgImage ? `url(${pageBgImage})` : 'none',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          minHeight: '100vh',
         }}
       >
-        Ajouter
-      </Button>
-
-      <Button
-        variant="contained"
-        onClick={() => setScannerOpen(true)}
-        startIcon={<QrCodeScannerIcon />}
-        sx={{
-          backgroundColor: "#9A616D",
-          color: "#fff",
-          borderRadius: "8px",
-          textTransform: "none",
-          fontSize: 14,
-          "&:hover": { backgroundColor: "#b2727d" },
-        }}
-      >
-        Scanner
-      </Button>
-
-      <Tooltip title="Exporter QR Entreprise (PDF)">
-        <IconButton
-          onClick={exportCompanyQrToPdf}
-          sx={{
-            border: "1px solid #ccc",
-            color: "#444",
-            "&:hover": { backgroundColor: "#f0f0f0" },
+        {/* Header avec personnalisations */}
+        <header
+          style={{
+            position: "fixed",
+            top: 0,
+            left: isSidebarOpen ? 220 : 70,
+            right: 0,
+            zIndex: 100,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            padding: "10px 20px",
+            backgroundColor: formBgColor,
+            boxShadow: `0px ${boxShadow}px ${boxShadow * 2}px rgba(0,0,0,0.1)`,
+            borderBottomLeftRadius: borderRadiusGlobal,
+            borderBottomRightRadius: borderRadiusGlobal,
+            transition: "left 0.3s ease",
           }}
         >
-          <PictureAsPdfIcon />
-        </IconButton>
-      </Tooltip>
-    </div>
-  </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            {/* Barre de recherche améliorée */}
+            <div style={{ display: "flex", alignItems: "center", flex: 1, backgroundColor: "#f5f5f5", borderRadius: borderRadiusGlobal, padding: "4px 10px", margin: '0 20px', minWidth: 0 }}>
+              <SearchIcon style={{ color: "#555", marginRight: 6 }} />
+              <TextField
+                placeholder=""
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                variant="standard"
+                InputProps={{ disableUnderline: true }}
+                sx={{ flex: 1, minWidth: 0, "& input": { fontSize: 14, color: "#333" } }}
+              />
+            </div>
 
-  {/* Filtres */}
-  <div style={{ display: "flex", gap: 8 }}>
-    {["Tous", "Présents", "Absents"].map((filter) => (
-      <Chip
-        key={filter}
-        label={filter}
-        onClick={() => setActiveFilter(filter)}
-        variant={activeFilter === filter ? "filled" : "outlined"}
-        style={{
-          backgroundColor:
-            activeFilter === filter ? "#4A2C2A" : "transparent",
-          color: activeFilter === filter ? "#fff" : "#333",
-          borderColor: "#ccc",
-          fontSize: 13,
-        }}
-      />
-    ))}
-  </div>
-</header>
-
-
-
-<aside
-  style={{
-    position: 'fixed',
-    left: 0,
-    top: 0,
-    height: '100vh',
-    width: isSidebarOpen ? 220 : 60,
-    transition: 'width 0.3s ease-in-out',
-    background: 'linear-gradient(180deg, #4A2C2A, #7B3F51)',
-    color: 'white',
-    display: 'flex',
-    flexDirection: 'column',
-    overflowX: 'hidden',
-    overflowY: 'auto',
-    paddingTop: 10,
-    boxShadow: '2px 0 12px rgba(0,0,0,0.1)',
-  }}
->
-  {/* Header */}
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: 10, gap: 10, marginBottom: 40 }}>
-    {isSidebarOpen && <div style={{ fontSize: 22, fontWeight: 'bold', whiteSpace: 'nowrap', marginTop: -15 }}>Easy Présence</div>}
-    <IconButton
-      onClick={() => setSidebarOpen(!isSidebarOpen)}
-      style={{ color: 'white', marginTop: -20, transition: 'transform 0.3s' }}
-      onMouseEnter={(e) => (e.currentTarget.style.transform = 'rotate(180deg)')}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = 'rotate(0deg)')}
-    >
-      {isSidebarOpen ? <FaAngleDoubleLeft /> : <FaAngleDoubleRight />}
-    </IconButton>
-  </div>
-
-  {/* Liste des QG + Tous */}
-  <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-    {qgList.map((qg) => {
-      // Si "Tous", compter tous les contacts, sinon filtrer par QG
-      const count = qg === "Tous" ? contacts.length : contacts.filter((c) => String(c.qg).trim() === String(qg).trim()).length;
-
-      return (
-        <li key={qg} style={{ marginBottom: 8 }}>
-          <Button
-            onClick={() => setFilterQG(qg)}
-            variant={filterQG === qg ? 'contained' : 'text'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              justifyContent: isSidebarOpen ? 'flex-start' : 'center',
-              padding: '10px 14px',
-              color: 'white',
-              backgroundColor: filterQG === qg ? '#9A616D' : 'transparent',
-              textTransform: 'none',
-              borderRadius: 20,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              boxShadow: filterQG === qg ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
-              transition: 'all 0.3s',
-              fontWeight: 500,
-            }}
-          >
-            <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20 }} />
-            {isSidebarOpen && (
-              <span style={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}>
-                {qg}
-                <span
-                  style={{
-                    backgroundColor: 'white',
-                    color: '#2C2C2C',
-                    borderRadius: '50%',
-                    padding: '2px 7px',
-                    fontSize: 12,
-                    fontWeight: 'bold',
-                    minWidth: 24,
-                    textAlign: 'center',
+            {/* Boutons d'action - AVEC PREVENTION DU COMPORTEMENT PAR DEFAUT */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Bouton de notifications avec Menu déroulant */}
+              <Tooltip title="Notifications">
+                <IconButton 
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setNotificationsAnchor(event.currentTarget);
+                  }}
+                  sx={{ 
+                    border: `2px solid ${buttonColor}`, 
+                    color: buttonColor, 
+                    "&:hover": { backgroundColor: `${buttonColor}15` }
                   }}
                 >
-                  {count}
-                </span>
-              </span>
+                  <Badge 
+                    badgeContent={unreadNotificationsCount} 
+                    color="error"
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        fontSize: '0.7rem',
+                        height: '18px',
+                        minWidth: '18px',
+                      }
+                    }}
+                  >
+                    <NotificationsIcon />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+
+              {/* Bouton Ajouter - AVEC PREVENTION */}
+              <Tooltip title="Ajouter un utilisateur">
+                <IconButton
+                  onClick={(event) => { 
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSelectedContact(null); 
+                    setNewEntryModalOpen(true); 
+                  }}
+                  sx={{ 
+                    border: `2px solid ${buttonColor}`, 
+                    color: buttonColor, 
+                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                  }}
+                >
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
+
+              {/* Bouton Scanner - AVEC PREVENTION */}
+              <Tooltip title="Scanner QR Code">
+                <IconButton
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setScannerOpen(true);
+                  }}
+                  sx={{ 
+                    border: `2px solid ${buttonColor}`, 
+                    color: buttonColor, 
+                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                  }}
+                >
+                  <QrCodeScannerIcon />
+                </IconButton>
+              </Tooltip>
+
+              {/* Bouton PDF - AVEC PREVENTION */}
+              <Tooltip title="Exporter QR Entreprise (PDF)">
+                <IconButton 
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    exportCompanyQrToPdf();
+                  }}
+                  sx={{ 
+                    border: `2px solid ${buttonColor}`, 
+                    color: buttonColor, 
+                    fontSize:12,
+                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                  }}
+                >
+                  <PictureAsPdfIcon />
+                </IconButton>
+              </Tooltip>
+            </div>
+          </div>
+
+          {/* Filtres rapides - AVEC PREVENTION */}
+          <div style={{ display: "flex", gap: 8, marginTop: 5, marginLeft: '20px' }}>
+            {["Tous", "Présents", "Absents"].map((filter) => (
+              <Chip
+                key={filter}
+                label={filter}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setActiveFilter(activeFilter === filter ? null : filter);
+                }}
+                variant={activeFilter === filter ? "filled" : "outlined"}
+                sx={{
+                  backgroundColor: activeFilter === filter ? buttonColor : "transparent",
+                  color: activeFilter === filter ? "#fff" : "#333",
+                  borderColor: buttonColor,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  "&:hover": { backgroundColor: activeFilter === filter ? buttonColor : `${buttonColor}33` },
+                }}
+              />
+            ))}
+          </div>
+        </header>
+
+        {/* Menu déroulant des notifications */}
+        <Menu
+          anchorEl={notificationsAnchor}
+          open={Boolean(notificationsAnchor)}
+          onClose={() => setNotificationsAnchor(null)}
+          PaperProps={{
+            sx: {
+              borderRadius: borderRadiusGlobal,
+              minWidth: 320,
+              maxWidth: 400,
+              maxHeight: 400,
+              overflow: 'auto',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }
+          }}
+          transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+          anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        >
+          <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold', color: buttonColor }}>
+              Notifications
+              {unreadNotificationsCount > 0 && (
+                <Chip 
+                  label={unreadNotificationsCount} 
+                  size="small" 
+                  color="error"
+                  sx={{ ml: 1, fontSize: '0.7rem', height: 20 }}
+                />
+              )}
+            </Typography>
+          </Box>
+
+          {notifications.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <NotificationsIcon sx={{ fontSize: 40, color: '#ccc', mb: 1 }} />
+              <Typography variant="body2" color="textSecondary">
+                Aucune notification
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
+              {notifications.map((notification, index) => (
+                <MenuItem 
+                  key={notification.id}
+                  sx={{ 
+                    borderBottom: index < notifications.length - 1 ? '1px solid #f0f0f0' : 'none',
+                    py: 1.5,
+                    backgroundColor: notification.read ? 'transparent' : '#f8f9fa',
+                    '&:hover': {
+                      backgroundColor: notification.read ? '#f5f5f5' : '#e3f2fd',
+                    }
+                  }}
+                  onClick={() => {
+                    // Marquer comme lu
+                    const updatedNotifications = notifications.map(n => 
+                      n.id === notification.id ? { ...n, read: true } : n
+                    );
+                    setNotifications(updatedNotifications);
+                  }}
+                >
+                  <Box sx={{ width: '100%' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: notification.read ? 'normal' : 'bold',
+                          flex: 1
+                        }}
+                      >
+                        {notification.message}
+                      </Typography>
+                      {!notification.read && (
+                        <Box sx={{ width: 8, height: 8, backgroundColor: buttonColor, borderRadius: '50%', ml: 1 }} />
+                      )}
+                    </Box>
+                    <Typography variant="caption" color="textSecondary">
+                      {new Date(notification.timestamp).toLocaleString('fr-FR', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Box>
+          )}
+
+          {notifications.length > 0 && (
+            <Box sx={{ p: 1, borderTop: '1px solid #e0e0e0' }}>
+              <Button
+                fullWidth
+                size="small"
+                onClick={() => {
+                  // Marquer toutes les notifications comme lues
+                  const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
+                  setNotifications(updatedNotifications);
+                  setNotificationsAnchor(null);
+                  showSnackbar('Toutes les notifications ont été marquées comme lues', 'info');
+                }}
+                sx={{
+                  color: buttonColor,
+                  fontSize: '0.8rem',
+                  '&:hover': {
+                    backgroundColor: `${buttonColor}15`
+                  }
+                }}
+              >
+                Tout marquer comme lu
+              </Button>
+            </Box>
+          )}
+        </Menu>
+
+        {/* Sidebar avec profil admin */}
+        <aside
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            height: '100vh',
+            width: isSidebarOpen ? 220 : 60,
+            transition: 'width 0.3s ease-in-out',
+            background: buttonColor,
+            display: 'flex',
+            flexDirection: 'column',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            paddingTop: 10,
+            boxShadow: `2px 0 ${boxShadow}px rgba(0,0,0,0.1)`,
+          }}
+        >
+          {/* Logo - AVEC PREVENTION */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, marginBottom: 20 }}>
+            {customLogo && (
+              <img
+                src={customLogo}
+                alt="Logo"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSidebarOpen(!isSidebarOpen);
+                }}
+                style={{ 
+                  width: isSidebarOpen ? 50 : 40, 
+                  height: isSidebarOpen ? 50 : 40, 
+                  objectFit: 'contain', 
+                  borderRadius: '50%', 
+                  cursor: 'pointer',
+                  border: '2px solid white'
+                }}
+              />
             )}
-          </Button>
-        </li>
-      );
-    })}
+          </div>
 
-    {/* Boutons QR pour admin */}
-    {localStorage.getItem('userRole') === 'admin' && (
-      <>
-       
-       
-      </>
-    )}
+          {/* Liste des QG - AVEC PREVENTION */}
+          <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+            {qgList.map((qg) => {
+              const count = qg === "Tous" ? contacts.length : contacts.filter((c) => String(c.qg).trim() === String(qg).trim()).length;
+              return (
+                <li key={qg} style={{ marginBottom: 8 }}>
+                  <Button
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setFilterQG(qg);
+                    }}
+                    variant={filterQG === qg ? 'contained' : 'text'}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      width: '100%',
+                      justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+                      padding: '10px 14px',
+                      color: 'white',
+                      backgroundColor: filterQG === qg ? `${buttonColor}dd` : 'transparent',
+                      textTransform: 'none',
+                      borderRadius: borderRadiusGlobal,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      boxShadow: filterQG === qg ? `0 4px ${boxShadow}px rgba(0,0,0,0.15)` : 'none',
+                      transition: 'all 0.3s',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <HiOutlineUserCircle style={{ marginRight: isSidebarOpen ? 10 : 0, fontSize: 20, color: 'white' }} />
+                    {isSidebarOpen && (
+                      <span style={{ display: 'flex', justifyContent: 'space-between', flex: 1 }}>
+                        {qg}
+                        <span style={{ backgroundColor: 'white', color: buttonColor, borderRadius: '50%', padding: '2px 7px', fontSize: 12, fontWeight: 'bold', minWidth: 24, textAlign: 'center' }}>
+                          {count}
+                        </span>
+                      </span>
+                    )}
+                  </Button>
+                </li>
+              );
+            })}
 
-    {/* Bouton déconnexion */}
-    <li style={{ marginTop: 'auto', padding: 12, display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-      <Button
-        onClick={handleLogout}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: isSidebarOpen ? '90%' : '50px',
-          backgroundColor: '#9A616D',
-          color: 'white',
-          fontWeight: 'bold',
-          textTransform: 'none',
-          borderRadius: 25,
-          padding: '12px 15px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#A47580')}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#9A616D')}
-      >
-        <ExitToAppIcon style={{ fontSize: 22, marginRight: 5 }} />
-        {isSidebarOpen && <span>Déconnexion</span>}
-      </Button>
-    </li>
-  </ul>
-</aside>
+            {/* Profil Admin avec Déconnexion */}
+            <li style={{ marginTop: 'auto', padding: '8px', marginBottom: 0 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: isSidebarOpen ? 'row' : 'column',
+                  alignItems: 'center',
+                  gap: isSidebarOpen ? 2 : 0,
+                  p: isSidebarOpen ? 2 : 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    borderRadius: borderRadiusGlobal,
+                  },
+                  transition: 'all 0.3s ease',
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (isSidebarOpen) {
+                    setIsLogoutDialogOpen(true);
+                  }
+                }}
+              >
+                {/* Avatar Admin */}
+                <Box sx={{ position: 'relative' }}>
+                  <SafeAvatar
+                    src={adminProfile?.image}
+                    alt={adminProfile?.name}
+                    sx={{
+                      width: isSidebarOpen ? 50 : 40,
+                      height: isSidebarOpen ? 50 : 40,
+                      backgroundColor: 'rgba(255,255,255,0.2)'
+                    }}
+                  />
+                  {/* Indicateur de statut en ligne */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 2,
+                      right: 2,
+                      width: 12,
+                      height: 12,
+                      backgroundColor: '#4CAF50',
+                      border: '2px solid white',
+                      borderRadius: '50%'
+                    }}
+                  />
+                </Box>
 
-<main
-  style={{
-    marginLeft: isSidebarOpen ? 220 : 70,
-    marginTop: 100,
-    padding: 20,
-    transition: "margin-left 0.3s ease",
-    minHeight: "100vh",
-    backgroundColor: "#f9f9f9",
-  }}
->
-  {/* Bouton filtre */}
-  <Stack
-    direction="row"
-    justifyContent="flex-end"
-    sx={{ position: "sticky", top: 10, zIndex: 10, mb: 2 }}
-  >
-    <IconButton
-      onClick={handleOpen}
-      sx={{
-        backgroundColor: "#fff",
-        color: "#333",
-        border: "1px solid #ddd",
-        "&:hover": { backgroundColor: "#eee" },
-      }}
-    >
-      <FilterAltIcon />
-    </IconButton>
-  </Stack>
+                {isSidebarOpen && (
+                  <Box sx={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                    <Typography 
+                      variant="subtitle2" 
+                      sx={{ 
+                        color: 'white', 
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                    >
+                      {adminProfile?.name}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: '0.7rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'block'
+                      }}
+                    >
+                      {adminProfile?.email}
+                    </Typography>
+                    <Chip
+                      label="En ligne"
+                      size="small"
+                      sx={{
+                        backgroundColor: '#4CAF50',
+                        color: 'white',
+                        fontSize: '0.6rem',
+                        height: 16,
+                        mt: 0.5
+                      }}
+                    />
+                  </Box>
+                )}
+              </Box>
+            </li>
+          </ul>
+        </aside>
 
-  {/* Popover filtres */}
-  <Popover
-    open={open}
-    anchorEl={anchorEl}
-    onClose={handleClose}
-    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-    transformOrigin={{ vertical: "top", horizontal: "right" }}
-    PaperProps={{
-      sx: {
-        borderRadius: 1,
-        boxShadow: 2,
-        padding: 2,
-        minWidth: 220,
-        backgroundColor: "#fff",
-      },
-    }}
-  >
-    <Stack direction="column" spacing={1}>
-      {allColumns.map((col, idx) => (
-        <FormControlLabel
-          key={col.key}
-          control={
-            <Checkbox
-              checked={col.visible}
-              onChange={() => {
-                const newCols = [...allColumns];
-                newCols[idx].visible = !newCols[idx].visible;
-                setAllColumns(newCols);
+        {/* Dialog de confirmation de déconnexion - AVEC PERSONNALISATION */}
+        <Dialog
+          open={isLogoutDialogOpen}
+          onClose={() => setIsLogoutDialogOpen(false)}
+          PaperProps={{
+            sx: {
+              borderRadius: borderRadiusGlobal,
+              padding: 2,
+              backgroundColor: formBgColor,
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            textAlign: 'center', 
+            fontWeight: 'bold',
+            color: titleColor,
+            fontFamily: titleFont,
+            fontSize: titleSize
+          }}>
+            Confirmation de déconnexion
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <ExitToAppIcon sx={{ 
+                fontSize: 60, 
+                color: buttonColor, 
+                mb: 2 
+              }} />
+              <Typography variant="body1" sx={{ mb: 2, color: titleColor }}>
+                Êtes-vous sûr de vouloir vous déconnecter ?
+              </Typography>
+              <Typography variant="body2" sx={{ color: titleColor, opacity: 0.8 }}>
+                Vous serez redirigé vers la page de connexion.
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
+            <Button
+              onClick={() => setIsLogoutDialogOpen(false)}
+              variant="outlined"
+              sx={{
+                borderRadius: borderRadiusGlobal,
+                px: 4,
+                borderColor: buttonColor,
+                color: buttonColor,
+                fontFamily: globalFont,
+                fontWeight: 'bold',
+                '&:hover': {
+                  backgroundColor: `${buttonColor}15`,
+                  borderColor: buttonColor,
+                }
+              }}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="contained"
+              sx={{
+                borderRadius: borderRadiusGlobal,
+                px: 4,
+                backgroundColor: buttonColor,
+                fontFamily: globalFont,
+                fontWeight: 'bold',
+                '&:hover': {
+                  backgroundColor: buttonColor,
+                  opacity: 0.9,
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 4px ${boxShadow}px rgba(0,0,0,0.2)`
+                }
+              }}
+            >
+              Se déconnecter
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Contenu principal */}
+        <main style={{ 
+          marginLeft: isSidebarOpen ? 220 : 70, 
+          marginTop: 100, 
+          padding: 20, 
+          transition: "margin-left 0.3s ease", 
+          minHeight: "100vh", 
+          backdropFilter: pageBgImage ? "blur(2px)" : "none" 
+        }}>
+          <br/><br/>
+
+          {/* Bouton filtre colonnes - AVEC PREVENTION */}
+          <Stack direction="row" justifyContent="flex-end" sx={{ position: "sticky", top: 10, zIndex: 10, mb: 2 }}>
+            <IconButton 
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleOpen(event);
+              }} 
+              sx={{ 
+                backgroundColor: "#fff", 
+                color: buttonColor, 
+                border: `2px solid ${buttonColor}`, 
+                "&:hover": { backgroundColor: `${buttonColor}15` }, 
+                borderRadius: borderRadiusGlobal 
+              }}
+            >
+              <FilterAltIcon />
+            </IconButton>
+          </Stack>
+
+          {/* Popover filtres colonnes */}
+          <Popover open={open} anchorEl={anchorEl} onClose={handleClose} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} transformOrigin={{ vertical: "top", horizontal: "right" }}>
+            <Box sx={{ p: 2, minWidth: 250, backgroundColor: formBgColor, borderRadius: borderRadiusGlobal }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ color: titleColor, fontFamily: titleFont }}>
+                Colonnes visibles
+              </Typography>
+              <Stack direction="column" spacing={1}>
+                {allColumns.map((col, idx) => (
+                  <FormControlLabel
+                    key={col.key}
+                    control={
+                      <Checkbox 
+                        checked={col.visible} 
+                        onChange={() => {
+                          const newCols = [...allColumns];
+                          newCols[idx].visible = !newCols[idx].visible;
+                          setAllColumns(newCols);
+                        }}
+                        sx={{
+                          color: buttonColor,
+                          '&.Mui-checked': {
+                            color: buttonColor,
+                          },
+                        }}
+                      />
+                    }
+                    label={col.label}
+                    sx={{ color: titleColor }}
+                  />
+                ))}
+              </Stack>
+            </Box>
+          </Popover>
+
+          {/* Tableau principal */}
+          <TableContainer 
+            component={Paper} 
+            sx={{ 
+              borderRadius: borderRadiusGlobal, 
+              overflowX: "auto", 
+              backgroundColor: formBgColor, 
+              boxShadow: `${boxShadow}px ${boxShadow}px ${boxShadow * 2}px rgba(0,0,0,0.1)`, 
+              mt: 2 
+            }}
+          >
+            <Table stickyHeader size="medium">
+              <TableHead>
+                <TableRow>
+                  {allColumns.filter((col) => col.visible).map((col) => (
+                    <TableCell 
+                      key={col.key} 
+                      sx={{ 
+                        fontWeight: "bold", 
+                        textAlign: "center", 
+                        px: 2, 
+                        py: 1, 
+                        backgroundColor: buttonColor, 
+                        color: 'white',
+                        fontFamily: titleFont,
+                        fontSize: '0.95rem'
+                      }}
+                    >
+                      {col.label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={allColumns.filter(col => col.visible).length} align="center">
+                      <LoadingSpinner color={buttonColor} />
+                    </TableCell>
+                  </TableRow>
+                ) : displayContacts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={allColumns.filter(col => col.visible).length} align="center">
+                      <Typography variant="body2" sx={{ color: titleColor, opacity: 0.7 }}>
+                        {contacts.length === 0 ? 'Aucun utilisateur trouvé' : 'Aucun résultat pour cette recherche'}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  displayContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((contact) => (
+                    <TableRow key={contact._id} hover>
+                      {allColumns.filter((col) => col.visible).map((col) => {
+                        switch (col.key) {
+                          case "imageUrl":
+                            return (
+                              <TableCell key={col.key} align="center">
+                                <SafeAvatar
+                                  src={contact.image || contact.imageUrl}
+                                  alt={contact.name}
+                                  sx={{ 
+                                    width: 40, 
+                                    height: 40, 
+                                    margin: "auto",
+                                    border: `2px solid ${buttonColor}`
+                                  }}
+                                />
+                              </TableCell>
+                            );
+                          case "qr":
+                            return (
+                              <TableCell key={col.key} align="center">
+                                <QRCodeSVG 
+                                  value={contact._id} 
+                                  size={40}
+                                  fgColor={buttonColor}
+                                />
+                              </TableCell>
+                            );
+                          case "presentToday":
+                            return (
+                              <TableCell key={col.key} align="center">
+                                <Chip
+                                  label={contact.presentToday ? "Présent" : "Absent"}
+                                  sx={{ 
+                                    backgroundColor: contact.presentToday ? "#4caf50" : "#f44336", 
+                                    color: "#fff",
+                                    fontWeight: 500,
+                                    borderRadius: borderRadiusGlobal
+                                  }}
+                                />
+                              </TableCell>
+                            );
+                          case "contractStart":
+                          case "contractEnd":
+                          case "activityDeadline":
+                          case "birthday":
+                            return (
+                              <TableCell key={col.key} align="center" sx={{ color: titleColor }}>
+                                {formatDateForDisplay(contact[col.key])}
+                              </TableCell>
+                            );
+                          case "salary":
+                            return (
+                              <TableCell key={col.key} align="center" sx={{ color: titleColor }}>
+                                {formatSalary(contact[col.key])}
+                              </TableCell>
+                            );
+                          case "actions":
+                            return (
+                              <TableCell key={col.key} align="center">
+                                <Stack direction="row" spacing={1} justifyContent="center">
+                                  <Tooltip title="Modifier">
+                                    <IconButton 
+                                      onClick={(event) => { 
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setSelectedContact(contact); 
+                                        setNewEntryModalOpen(true); 
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: buttonColor, 
+                                        '&:hover': { backgroundColor: `${buttonColor}15` } 
+                                      }}
+                                    >
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip title="Supprimer">
+                                    <IconButton 
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        handleDeleteMember(contact._id);
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: '#f44336', 
+                                        '&:hover': { backgroundColor: '#ffebee' } 
+                                      }}
+                                    >
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip title="Historique">
+                                    <IconButton 
+                                      onClick={(event) => { 
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        setSelectedContactHistory(contact); 
+                                        setHistoryModalOpen(true); 
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: buttonColor, 
+                                        '&:hover': { backgroundColor: `${buttonColor}15` } 
+                                      }}
+                                    >
+                                      <HistoryIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip title="Exporter PDF">
+                                    <IconButton 
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        exportQrToPdf(contact);
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: buttonColor, 
+                                        '&:hover': { backgroundColor: `${buttonColor}15` } 
+                                      }}
+                                    >
+                                      <PictureAsPdfIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
+                                    <IconButton 
+                                      onClick={(event) => {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        handleTogglePresence(contact._id);
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        backgroundColor: contact.presentToday ? "#f44336" : "#4caf50", 
+                                        color: "#fff", 
+                                        '&:hover': { backgroundColor: contact.presentToday ? "#d32f2f" : "#388e3c" } 
+                                      }}
+                                    >
+                                      {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
+                                    </IconButton>
+                                  </Tooltip>
+                                </Stack>
+                              </TableCell>
+                            );
+                          default:
+                            return (
+                              <TableCell key={col.key} align="center" sx={{ color: titleColor }}>
+                                {contact[col.key] || '-'}
+                              </TableCell>
+                            );
+                        }
+                      })}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={displayContacts.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={(e, newPage) => setPage(newPage)}
+              onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+              labelRowsPerPage="Lignes par page:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} sur ${count}`}
+              sx={{
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                  color: titleColor,
+                  fontFamily: globalFont
+                }
               }}
             />
-          }
-          label={col.label}
-        />
-      ))}
-    </Stack>
-  </Popover>
-
-  {/* Tableau principal */}
-  <TableContainer
-    component={Paper}
-    sx={{
-      borderRadius: 1,
-      overflowX: "auto",
-      backgroundColor: "#fff",
-      boxShadow: 1,
-      mt: 2,
-    }}
-  >
-    <Table stickyHeader size="medium">
-      <TableHead>
-        <TableRow sx={{ backgroundColor: "#eee" }}>
-          {allColumns
-            .filter((col) => col.visible)
-            .map((col) => (
-              <TableCell
-                key={col.key}
-                sx={{ fontWeight: "bold", textAlign: "center", px: 2, py: 1 }}
-              >
-                {col.label}
-              </TableCell>
-            ))}
-        </TableRow>
-      </TableHead>
-
-      <TableBody>
-        {displayContacts
-          .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-          .map((contact) => (
-            <TableRow key={contact._id} hover>
-              {allColumns
-                .filter((col) => col.visible)
-                .map((col) => {
-                  switch (col.key) {
-                    case "imageUrl":
-                      return (
-                        <TableCell key={col.key} align="center">
-                          <Avatar
-                            src={contact.imageUrl ? `https://easy-presence-api.onrender.com${contact.imageUrl}` : ""}
-                            alt={contact.name}
-                            sx={{ width: 40, height: 40, margin: "auto" }}
-                          >
-                            {!contact.imageUrl && (contact.name?.charAt(0) || "U")}
-                          </Avatar>
-                        </TableCell>
-                      );
-                    case "qr":
-                      return (
-                        <TableCell key={col.key} align="center">
-                          <QRCodeSVG value={contact._id} size={40} />
-                        </TableCell>
-                      );
-                    case "presentToday":
-                      return (
-                        <TableCell key={col.key} align="center">
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "4px 12px",
-                              borderRadius: 12,
-                              color: "#fff",
-                              backgroundColor: contact.presentToday ? "#4caf50" : "#f44336",
-                              fontWeight: 500,
-                            }}
-                          >
-                            {contact.presentToday ? "Présent" : "Absent"}
-                          </span>
-                        </TableCell>
-                      );
-                    case "role":
-                      return (
-                        <TableCell key={col.key} align="center">
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "4px 12px",
-                              borderRadius: 12,
-                              color: "#fff",
-                              backgroundColor: contact.role?.toLowerCase() === "admin" ? "#2196f3" : "#ff9800",
-                              fontWeight: 500,
-                            }}
-                          >
-                            {contact.role}
-                          </span>
-                        </TableCell>
-                      );
-                    case "actions":
-                      return (
-                        <TableCell key={col.key} align="center">
-                          <Stack direction="row" spacing={1} justifyContent="center">
-                            <Tooltip title="Modifier">
-                              <IconButton
-                                onClick={() => { setSelectedContact(contact); setNewEntryModalOpen(true); }}
-                                size="small"
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title="Supprimer">
-                              <IconButton
-                                onClick={() => handleDeleteMember(contact._id)}
-                                size="small"
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title="Historique">
-                              <IconButton
-                                onClick={() => { setSelectedContactHistory(contact); setHistoryModalOpen(true); }}
-                                size="small"
-                              >
-                                <HistoryIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title="Exporter PDF">
-                              <IconButton
-                                onClick={() => exportQrToPdf(contact)}
-                                size="small"
-                              >
-                                <PictureAsPdfIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-
-                            <Tooltip title={contact.presentToday ? "Marquer Absent" : "Marquer Présent"}>
-                              <IconButton
-                                onClick={() => handleTogglePresence(contact._id)}
-                                size="small"
-                                style={{
-                                  backgroundColor: contact.presentToday ? "#f44336" : "#4caf50",
-                                  color: "#fff",
-                                }}
-                              >
-                                {contact.presentToday ? <CloseIcon fontSize="small" /> : <CheckIcon fontSize="small" />}
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
-                        </TableCell>
-                      );
-                    default:
-                      return (
-                        <TableCell key={col.key} align="center">{contact[col.key]}</TableCell>
-                      );
-                  }
-                })}
-            </TableRow>
-          ))}
-      </TableBody>
-    </Table>
-
-    <TablePagination
-      rowsPerPageOptions={[5, 10, 25]}
-      component="div"
-      count={displayContacts.length}
-      rowsPerPage={rowsPerPage}
-      page={page}
-      onPageChange={(e, newPage) => setPage(newPage)}
-      onRowsPerPageChange={(e) => {
-        setRowsPerPage(parseInt(e.target.value, 10));
-        setPage(0);
-      }}
-      size="small"
-    />
-  </TableContainer>
-</main>
-
-
+          </TableContainer>
+        </main>
       </div>
-      <NewEntryModal open={isNewEntryModalOpen} onClose={() => setNewEntryModalOpen(false)} onSave={handleSaveNewEntry} contact={selectedContact} />
+
+      {/* Snackbar pour les notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      >
+        <Alert 
+          onClose={() => setSnackbar({ ...snackbar, open: false })} 
+          severity={snackbar.severity}
+          sx={{ 
+            width: '100%',
+            fontFamily: globalFont,
+            borderRadius: borderRadiusGlobal
+          }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Modals */}
+      <NewEntryModal 
+        open={isNewEntryModalOpen} 
+        onClose={() => setNewEntryModalOpen(false)} 
+        onSave={handleSaveNewEntry} 
+        contact={selectedContact}
+        showSnackbar={showSnackbar}
+      />
       <HistoryModal open={isHistoryModalOpen} onClose={() => setHistoryModalOpen(false)} contact={selectedContactHistory} />
-      <QrScannerModal open={isScannerOpen} onClose={() => setScannerOpen(false)} onScanSuccess={handleScanSuccess} />
+      <QrScannerModal 
+        open={isScannerOpen} 
+        onClose={() => setScannerOpen(false)} 
+        onScanSuccess={handleScanSuccess}
+        showSnackbar={showSnackbar}
+      />
     </>
   );
 };

@@ -1,13 +1,14 @@
 import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
-  Stack,
   IconButton,
   Typography,
   TextField,
   Button,
   InputAdornment,
-  LinearProgress,
+  CircularProgress,
+  Paper,
 } from "@mui/material";
 import {
   Person,
@@ -15,61 +16,47 @@ import {
   Lock,
   Visibility,
   VisibilityOff,
-  Phone,
-  Work,
-  LocationCity,
-  Image,
+  Delete,
 } from "@mui/icons-material";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 
 import CustomizationSidebar from "./CustomizationSidebar";
 import { CustomizationContext } from "./CustomizationContext";
 
+const defaultLogoUrl =
+  "https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg";
+
 const InscrireAdminWithSidebar = () => {
   const navigate = useNavigate();
   const {
-    customTitle,
     customLogo,
+    setCustomLogo,
     logoPosition,
     logoSize,
-    titleColor,
-    titleFont,
-    titleSize,
     formBgColor,
     buttonColor,
-    setCustomLogo,
+    pageBg,
+    pageBgImage,
+    setPageBgImage,
+    globalFont,
+    boxShadow,
+    borderRadiusGlobal,
   } = useContext(CustomizationContext);
 
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    number: "",
-    position: "",
-    qg: "",
-    image: null,
-  });
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const handleChange = (e) => {
-    if (e.target.type === "file") {
-      setForm({ ...form, image: e.target.files[0] });
-    } else {
-      setForm({ ...form, [e.target.name]: e.target.value });
-    }
+    setForm({ ...form, [e.target.name]: e.target.value });
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
-  const handleLogoChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setCustomLogo(URL.createObjectURL(e.target.files[0]));
-    }
-  };
+  const handleRemoveLogo = () => setCustomLogo(null);
+  const handleRemoveBackground = () => setPageBgImage(null);
 
-  const validateStep1 = () => {
+  const validateForm = () => {
     const newErrors = {};
     if (!form.name) newErrors.name = "Le nom est requis.";
     if (!form.email) newErrors.email = "L'email est requis.";
@@ -78,24 +65,12 @@ const InscrireAdminWithSidebar = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateStep2 = () => {
-    const newErrors = {};
-    if (!form.number) newErrors.number = "Le numéro de téléphone est requis.";
-    if (!form.position) newErrors.position = "Le poste est requis.";
-    if (!form.qg) newErrors.qg = "Le QG est requis.";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const nextStep = () => {
-    if (validateStep1()) setStep(2);
-  };
-
-  const prevStep = () => setStep(1);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateStep2()) return;
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setErrors({});
 
     try {
       const formData = new FormData();
@@ -109,29 +84,50 @@ const InscrireAdminWithSidebar = () => {
         { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      setForm({
-        name: "",
-        email: "",
-        password: "",
-        number: "",
-        position: "",
-        qg: "",
-        image: null,
-      });
+      setForm({ name: "", email: "", password: "" });
       navigate("/login");
     } catch (error) {
       const msg = error.response?.data?.message || "Erreur lors de l'inscription.";
       setErrors({ global: msg });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f5f5" }}>
-      <CustomizationSidebar handleLogoChange={handleLogoChange} />
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        bgcolor: pageBg,
+        backgroundImage: pageBgImage ? `url(${pageBgImage})` : "none",
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        fontFamily: globalFont,
+        position: "relative",
+      }}
+    >
+      <CustomizationSidebar />
+
+      {/* Bouton pour supprimer le fond */}
+      {pageBgImage && (
+        <IconButton
+          onClick={handleRemoveBackground}
+          sx={{
+            position: "absolute",
+            top: 15,
+            right: 15,
+            bgcolor: "rgba(0,0,0,0.6)",
+            color: "white",
+            "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+          }}
+        >
+          <Delete />
+        </IconButton>
+      )}
 
       <Box
-        component="form"
-        onSubmit={handleSubmit}
         sx={{
           flex: 1,
           display: "flex",
@@ -140,284 +136,165 @@ const InscrireAdminWithSidebar = () => {
           p: 5,
         }}
       >
-        <Box
+        <Paper
+          elevation={boxShadow}
           sx={{
+            borderRadius: borderRadiusGlobal,
+            padding: 5,
             width: "100%",
-            maxWidth: 600,
+            maxWidth: 500,
+            textAlign: "center",
             bgcolor: formBgColor,
-            borderRadius: 3,
-            p: 5,
-            boxShadow: 4,
+            boxShadow: `0px ${boxShadow}px ${boxShadow * 2}px rgba(0,0,0,0.2)`,
+            position: "relative",
           }}
         >
-          {/* HEADER */}
+          {/* Logo + bouton suppression */}
           <Box
             display="flex"
-            flexDirection={logoPosition === "top" || logoPosition === "bottom" ? "column" : "row"}
+            flexDirection={
+              logoPosition === "top" || logoPosition === "bottom"
+                ? "column"
+                : "row"
+            }
             alignItems="center"
             justifyContent="center"
-            mb={2}
+            mb={3}
+            position="relative"
           >
-            {(logoPosition === "left" || logoPosition === "top") && customLogo && (
-              <Box
-                component="img"
-                src={customLogo}
-                alt="Logo"
-                sx={{
-                  width: logoSize,
-                  height: logoSize,
-                  mr: logoPosition === "left" ? 2 : 0,
-                  mb: logoPosition === "top" ? 1 : 0,
-                }}
-              />
-            )}
-
-            <Typography
-              variant="h5"
-              fontWeight="bold"
-              sx={{ color: titleColor, fontFamily: titleFont, fontSize: titleSize }}
-            >
-              {customTitle}
-            </Typography>
-
-            {(logoPosition === "right" || logoPosition === "bottom") && customLogo && (
-              <Box
-                component="img"
-                src={customLogo}
-                alt="Logo"
-                sx={{
-                  width: logoSize,
-                  height: logoSize,
-                  ml: logoPosition === "right" ? 2 : 0,
-                  mt: logoPosition === "bottom" ? 1 : 0,
-                }}
-              />
-            )}
-          </Box>
-
-          {/* PROGRESSION */}
-          <Box textAlign="center" mb={2}>
-            <Typography variant="body2" color="#777" mb={1}>
-              Étape {step} sur 2
-            </Typography>
-            <LinearProgress
-              variant="determinate"
-              value={step === 1 ? 50 : 100}
+            <Box
+              component="img"
+              src={customLogo || defaultLogoUrl}
+              alt="Logo"
               sx={{
-                height: 8,
-                borderRadius: 5,
-                backgroundColor: "#e5e7eb",
-                "& .MuiLinearProgress-bar": { backgroundColor: buttonColor },
+                width: logoSize,
+                height: logoSize,
+                mb: logoPosition === "top" ? 2 : 0,
+                mr: logoPosition === "left" ? 2 : 0,
+                mt: logoPosition === "bottom" ? 2 : 0,
+                ml: logoPosition === "right" ? 2 : 0,
               }}
             />
+
+            {customLogo && (
+              <IconButton
+                onClick={handleRemoveLogo}
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bgcolor: "rgba(0,0,0,0.6)",
+                  color: "white",
+                  "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+                  p: 0.5,
+                }}
+              >
+                <Delete fontSize="small" />
+              </IconButton>
+            )}
           </Box>
 
-          {/* FORMULAIRE */}
-          <Stack spacing={2}>
-            {errors.global && (
-              <Typography color="error" textAlign="center">
-                {errors.global}
-              </Typography>
-            )}
+          {errors.global && (
+            <Typography color="error" sx={{ mb: 2, fontSize: "0.9rem" }}>
+              {errors.global}
+            </Typography>
+          )}
 
-            {step === 1 && (
-              <>
-                <TextField
-                  fullWidth
-                  name="name"
-                  placeholder="Nom complet"
-                  value={form.name}
-                  onChange={handleChange}
-                  error={!!errors.name}
-                  helperText={errors.name}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person />
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  name="email"
-                  placeholder="Adresse e-mail"
-                  value={form.email}
-                  onChange={handleChange}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Email />
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  name="password"
-                  placeholder="Mot de passe"
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={handleChange}
-                  error={!!errors.password}
-                  helperText={errors.password}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Lock />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ p: 0 }}>
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={nextStep}
-                  sx={{
-                    borderRadius: 3,
-                    bgcolor: buttonColor,
-                    color: "#fff",
-                    py: 1.5,
-                    fontWeight: "bold",
-                    fontSize: 16,
-                  }}
-                >
-                  Suivant
-                </Button>
-              </>
-            )}
+          <form onSubmit={handleSubmit}>
+            <TextField
+              fullWidth
+              label="Nom complet"
+              variant="outlined"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              error={!!errors.name}
+              helperText={errors.name}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Person />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 3, borderRadius: 3 }}
+            />
 
-            {step === 2 && (
-              <>
-                <TextField
-                  fullWidth
-                  name="number"
-                  placeholder="Numéro de téléphone"
-                  value={form.number}
-                  onChange={handleChange}
-                  error={!!errors.number}
-                  helperText={errors.number}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Phone />
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  name="position"
-                  placeholder="Poste"
-                  value={form.position}
-                  onChange={handleChange}
-                  error={!!errors.position}
-                  helperText={errors.position}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Work />
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
-                <TextField
-                  fullWidth
-                  name="qg"
-                  placeholder="QG"
-                  value={form.qg}
-                  onChange={handleChange}
-                  error={!!errors.qg}
-                  helperText={errors.qg}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LocationCity />
-                      </InputAdornment>
-                    ),
-                    sx: { height: 50 },
-                  }}
-                />
+            <TextField
+              fullWidth
+              label="Adresse e-mail"
+              variant="outlined"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Email />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 3, borderRadius: 3 }}
+            />
 
-                <Button
-                  variant="outlined"
-                  component="label"
-                  fullWidth
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    justifyContent: "flex-start",
-                    height: 50,
-                  }}
-                >
-                  <Image sx={{ mr: 1, color: buttonColor }} />
-                  {form.image ? form.image.name : "Télécharger une image"}
-                  <input type="file" hidden name="image" accept="image/*" onChange={handleChange} />
-                </Button>
+            <TextField
+              fullWidth
+              label="Mot de passe"
+              variant="outlined"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 4, borderRadius: 3 }}
+            />
 
-                <Stack direction="row" spacing={2}>
-                  <Button
-                    variant="outlined"
-                    onClick={prevStep}
-                    sx={{
-                      borderRadius: 3,
-                      color: buttonColor,
-                      borderColor: buttonColor,
-                      flex: 1,
-                    }}
-                  >
-                    Retour
-                  </Button>
-                  <Button
-                    variant="contained"
-                    type="submit"
-                    sx={{
-                      borderRadius: 3,
-                      bgcolor: buttonColor,
-                      color: "#fff",
-                      py: 1.5,
-                      fontWeight: "bold",
-                      fontSize: 16,
-                      flex: 1,
-                    }}
-                  >
-                    S'inscrire
-                  </Button>
-                </Stack>
-              </>
-            )}
-          </Stack>
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={loading}
+              sx={{
+                backgroundColor: buttonColor,
+                color: "white",
+                borderRadius: 3,
+                py: 1.6,
+                fontWeight: 600,
+                fontSize: "1rem",
+                "&:hover": { backgroundColor: buttonColor },
+              }}
+            >
+              {loading ? <CircularProgress size={24} sx={{ color: "white" }} /> : "S'inscrire"}
+            </Button>
+          </form>
 
-          <Typography
-            variant="body2"
-            align="center"
-            mt={3}
-            sx={{
-              color: "#555",
-              "& span": {
-                color: buttonColor,
-                cursor: "pointer",
-                fontWeight: "bold",
-              },
-            }}
-          >
+          <Typography variant="body2" sx={{ mt: 3 }}>
             Vous avez déjà un compte ?{" "}
-            <span onClick={() => navigate("/login")}>Connectez-vous ici</span>
+            <Link
+              to="/login"
+              style={{ textDecoration: "none", color: buttonColor, fontWeight: 600 }}
+            >
+              Connectez-vous ici
+            </Link>
           </Typography>
-        </Box>
+        </Paper>
       </Box>
     </Box>
   );

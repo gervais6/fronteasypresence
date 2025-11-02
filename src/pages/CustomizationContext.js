@@ -3,31 +3,33 @@ import React, { createContext, useState } from "react";
 export const CustomizationContext = createContext();
 
 export const CustomizationProvider = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null);
-
   const [customTitle, setCustomTitle] = useState("Mon titre");
   const [titleColor, setTitleColor] = useState("#9A616D");
   const [titleFont, setTitleFont] = useState("Arial");
-  const [titleSize, setTitleSize] = useState(24);
-
+  const [titleSize, setTitleSize] = useState(20);
   const [customLogo, setCustomLogo] = useState(null);
   const [logoPosition, setLogoPosition] = useState("left");
   const [logoSize, setLogoSize] = useState(80);
-
-  const [formBgColor, setFormBgColor] = useState("#fff");
+  const [formBgColor, setFormBgColor] = useState("#ffffff");
   const [buttonColor, setButtonColor] = useState("#9A616D");
+  const [pageBg, setPageBg] = useState("#f5f5f5");
+  const [pageBgImage, setPageBgImage] = useState(null);
+  const [bgImageSize, setBgImageSize] = useState(100);
+  const [globalFont, setGlobalFont] = useState("Arial");
+  const [boxShadow, setBoxShadow] = useState(4);
+  const [borderRadiusGlobal, setBorderRadiusGlobal] = useState(3);
 
-  // Fonction toggle pour ouvrir/fermer un panel
-  const togglePanel = (panel) => {
-    setActivePanel((prev) => (prev === panel ? null : panel));
+  const togglePanel = (panelName) => {
+    setActivePanel(activePanel === panelName ? null : panelName);
   };
 
-  // Fonction pour changer le logo
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setCustomLogo(URL.createObjectURL(file));
+      const imageUrl = URL.createObjectURL(file);
+      setCustomLogo(imageUrl);
     }
   };
 
@@ -47,7 +49,8 @@ export const CustomizationProvider = ({ children }) => {
         titleSize,
         setTitleSize,
         customLogo,
-        setCustomLogo,
+        setCustomLogo,        // ✅ ajout pour pouvoir supprimer le logo
+        handleLogoChange,
         logoPosition,
         setLogoPosition,
         logoSize,
@@ -56,7 +59,18 @@ export const CustomizationProvider = ({ children }) => {
         setFormBgColor,
         buttonColor,
         setButtonColor,
-        handleLogoChange,
+        pageBg,
+        setPageBg,
+        pageBgImage,
+        setPageBgImage,
+        bgImageSize,
+        setBgImageSize,
+        globalFont,
+        setGlobalFont,
+        boxShadow,
+        setBoxShadow,
+        borderRadiusGlobal,
+        setBorderRadiusGlobal,
       }}
     >
       {children}

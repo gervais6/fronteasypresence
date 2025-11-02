@@ -1,146 +1,166 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Link, useNavigate } from 'react-router-dom';
-import { TextField, Button, InputAdornment, IconButton, CircularProgress, Box, Typography, Paper } from '@mui/material';
-import { Email, Lock, Visibility, VisibilityOff } from '@mui/icons-material';
-import axios from 'axios';
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Box,
+  IconButton,
+  Typography,
+  TextField,
+  Button,
+  InputAdornment,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
+import { Email, Lock, Visibility, VisibilityOff } from "@mui/icons-material";
+import axios from "axios";
 
 import CustomizationSidebar from "./CustomizationSidebar";
 import { CustomizationContext } from "./CustomizationContext";
 
+const defaultLogoUrl =
+  "https://upload.wikimedia.org/wikipedia/commons/a/ac/No_image_available.svg";
+
 const Login = () => {
   const navigate = useNavigate();
-  const { 
-    customTitle,
+  const {
     customLogo,
     setCustomLogo,
     logoPosition,
     logoSize,
-    titleColor,
-    titleFont,
-    titleSize,
     formBgColor,
     buttonColor,
+    pageBg,
+    pageBgImage,
+    globalFont,
+    boxShadow,
+    borderRadiusGlobal,
   } = useContext(CustomizationContext);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({}); // ✅ erreurs locales
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setErrors({ ...errors, [e.target.name]: "" });
+  };
+
+  const handleLogoChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setCustomLogo(URL.createObjectURL(e.target.files[0]));
+    }
+  };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!email) newErrors.email = "L'adresse e-mail est requise.";
-    if (!password) newErrors.password = "Le mot de passe est requis.";
+    if (!form.email) newErrors.email = "L'adresse e-mail est requise.";
+    if (!form.password) newErrors.password = "Le mot de passe est requis.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!validateForm()) return;
 
     setLoading(true);
     setErrors({});
 
     try {
-      const response = await axios.post('https://backendeasypresence.onrender.com/api/auth/login', { email, password });
+      const response = await axios.post(
+        "https://backendeasypresence.onrender.com/api/auth/login",
+        form
+      );
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userRole', response.data.role);
-      localStorage.setItem('userId', response.data.userId);
-      localStorage.setItem('memberId', response.data.userId);
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("userRole", response.data.role);
+      localStorage.setItem("userId", response.data.userId);
+      localStorage.setItem("memberId", response.data.userId);
 
-      if (response.data.role === 'admin') navigate('/dashboard');
-      else navigate('/scan-entreprise');
+      if (response.data.role === "admin") navigate("/dashboard");
+      else navigate("/scan-entreprise");
     } catch (error) {
-      const msg = error.response?.data?.message || "Erreur lors de la connexion.";
+      const msg =
+        error.response?.data?.message || "Erreur lors de la connexion.";
       setErrors({ global: msg });
     } finally {
       setLoading(false);
     }
   };
 
+  // Empêche le retour arrière après login
   useEffect(() => {
-    window.history.pushState(null, '', window.location.href);
-    const handlePopState = () => window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () =>
+      window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f5f5f5" }}>
-      <CustomizationSidebar 
-        handleLogoChange={(e) => {
-          if (e.target.files && e.target.files[0]) {
-            setCustomLogo(URL.createObjectURL(e.target.files[0]));
-          }
-        }}
-      />
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        bgcolor: pageBg,
+        backgroundImage: pageBgImage ? `url(${pageBgImage})` : "none",
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        fontFamily: globalFont,
+      }}
+    >
+      <CustomizationSidebar handleLogoChange={handleLogoChange} />
 
-      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 5 }}>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          p: 5,
+        }}
+      >
         <Paper
-          elevation={8}
+          elevation={boxShadow}
           sx={{
-            borderRadius: 4,
+            borderRadius: borderRadiusGlobal,
             padding: 5,
-            width: '100%',
+            width: "100%",
             maxWidth: 500,
-            textAlign: 'center',
-            boxShadow: '0px 6px 20px rgba(0,0,0,0.1)',
+            textAlign: "center",
             bgcolor: formBgColor,
+            boxShadow: `0px ${boxShadow}px ${boxShadow * 2}px rgba(0,0,0,0.2)`,
           }}
         >
-          {/* Logo & Titre dynamique */}
+          {/* Logo */}
           <Box
             display="flex"
-            flexDirection={logoPosition === "top" || logoPosition === "bottom" ? "column" : "row"}
+            flexDirection={
+              logoPosition === "top" || logoPosition === "bottom"
+                ? "column"
+                : "row"
+            }
             alignItems="center"
             justifyContent="center"
             mb={3}
           >
-            {(logoPosition === "top" || logoPosition === "left") && customLogo && (
-              <Box
-                component="img"
-                src={customLogo}
-                alt="Logo"
-                sx={{
-                  width: logoSize,
-                  height: logoSize,
-                  mb: logoPosition === "top" ? 2 : 0,
-                  mr: logoPosition === "left" ? 2 : 0,
-                }}
-              />
-            )}
-
-            <Typography
-              variant="h4"
+            <Box
+              component="img"
+              src={customLogo || defaultLogoUrl}
+              alt="Logo"
               sx={{
-                fontWeight: 'bold',
-                color: titleColor,
-                fontFamily: titleFont,
-                fontSize: titleSize,
+                width: logoSize,
+                height: logoSize,
+                mb: logoPosition === "top" ? 2 : 0,
+                mr: logoPosition === "left" ? 2 : 0,
+                mt: logoPosition === "bottom" ? 2 : 0,
+                ml: logoPosition === "right" ? 2 : 0,
               }}
-            >
-              {customTitle}
-            </Typography>
-
-            {(logoPosition === "bottom" || logoPosition === "right") && customLogo && (
-              <Box
-                component="img"
-                src={customLogo}
-                alt="Logo"
-                sx={{
-                  width: logoSize,
-                  height: logoSize,
-                  mt: logoPosition === "bottom" ? 2 : 0,
-                  ml: logoPosition === "right" ? 2 : 0,
-                }}
-              />
-            )}
+            />
           </Box>
 
-          {/* Affichage d'une erreur globale */}
+          {/* Erreur globale */}
           {errors.global && (
             <Typography color="error" sx={{ mb: 2, fontSize: "0.9rem" }}>
               {errors.global}
@@ -153,8 +173,9 @@ const Login = () => {
               fullWidth
               label="Adresse e-mail"
               variant="outlined"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              value={form.email}
+              onChange={handleChange}
               error={!!errors.email}
               helperText={errors.email}
               InputProps={{
@@ -171,9 +192,10 @@ const Login = () => {
               fullWidth
               label="Mot de passe"
               variant="outlined"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange}
               error={!!errors.password}
               helperText={errors.password}
               InputProps={{
@@ -200,21 +222,32 @@ const Login = () => {
               disabled={loading}
               sx={{
                 backgroundColor: buttonColor,
-                color: 'white',
+                color: "white",
                 borderRadius: 3,
                 py: 1.6,
                 fontWeight: 600,
-                fontSize: '1rem',
-                '&:hover': { backgroundColor: buttonColor },
+                fontSize: "1rem",
+                "&:hover": { backgroundColor: buttonColor },
               }}
             >
-              {loading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Se connecter'}
+              {loading ? (
+                <CircularProgress size={24} sx={{ color: "white" }} />
+              ) : (
+                "Se connecter"
+              )}
             </Button>
           </form>
 
           <Typography variant="body2" sx={{ mt: 3 }}>
-            Vous n’avez pas de compte ?{' '}
-            <Link to="/inscription" style={{ textDecoration: 'none', color: buttonColor, fontWeight: 600 }}>
+            Vous n’avez pas de compte ?{" "}
+            <Link
+              to="/inscription"
+              style={{
+                textDecoration: "none",
+                color: buttonColor,
+                fontWeight: 600,
+              }}
+            >
               Créez-en un
             </Link>
           </Typography>
