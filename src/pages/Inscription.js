@@ -300,4 +300,4 @@ const InscrireAdminWithSidebar = () => {
   );
 };
 
-export default InscrireAdminWithSideb ar;
+export default InscrireAdminWithSidebar;
