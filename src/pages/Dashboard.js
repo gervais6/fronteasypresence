@@ -2752,69 +2752,106 @@ const Dashboard = () => {
     }
   };
 
-  const handleScanSuccess = async (decodedText) => {
-    try {
-      const token = localStorage.getItem('token');
-      const currentTime = new Date().toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
+const handleScanSuccess = async (decodedText) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
 
-      const cleanedText = decodedText.trim();
-      
-      const user = findUserById(cleanedText);
-      if (!user) {
-        showSnackbar('Utilisateur non trouvé pour ce QR code', 'error');
-        return;
-      }
+  // Nettoyer le texte scanné
+  const cleanedText = decodedText.trim();
+  
+  console.log("QR Code scanné:", cleanedText);
+  
+  // Vérifier si c'est le QR code de l'entreprise
+  if (cleanedText === COMPANY_ID) {
+    showSnackbar('QR code entreprise scanné - Fonctionnalité à implémenter', 'info');
+    setScannerOpen(false);
+    return;
+  }
+  
+  // Sinon, chercher un utilisateur
+  const user = findUserById(cleanedText);
+  if (!user) {
+    showSnackbar('Utilisateur non trouvé pour ce QR code', 'error');
+    return;
+  }
 
-      const isCurrentlyPresent = user.presentToday;
-
-      const response = await axios.post(API_PRESENCES, {
-        userId: cleanedText,
-        date: today,
-        present: !isCurrentlyPresent,
-        time: currentTime
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setContacts(prev => prev.map(contact => {
-        if (contact._id === cleanedText) {
-          const updatedHistory = contact.history || [];
-          const todayIndex = updatedHistory.findIndex(h => h.date === today);
-          
-          if (todayIndex >= 0) {
-            updatedHistory[todayIndex] = { 
-              date: today, 
-              present: !isCurrentlyPresent,
-              time: !isCurrentlyPresent ? currentTime : '--:--'
-            };
-          } else {
-            updatedHistory.push({ 
-              date: today, 
-              present: !isCurrentlyPresent,
-              time: !isCurrentlyPresent ? currentTime : '--:--'
-            });
-          }
-
-          return {
-            ...contact,
-            presentToday: !isCurrentlyPresent,
-            history: updatedHistory
-          };
-        }
-        return contact;
-      }));
-
-      showSnackbar(`Scan réussi: ${user.name} marqué comme ${!isCurrentlyPresent ? 'présent' : 'absent'}`, 'success');
-      setScannerOpen(false);
-    } catch (error) {
-      console.error('Erreur lors du scan:', error);
-      const errorMessage = error.response?.data?.message || 'Erreur lors du traitement du scan';
-      showSnackbar(errorMessage, 'error');
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showSnackbar("Token manquant, veuillez vous reconnecter", 'error');
+      return;
     }
-  };
+
+    // Vérifier si l'utilisateur est déjà marqué présent aujourd'hui
+    const todayEntry = user.history?.find(h => h.date === today);
+    const isCurrentlyPresent = todayEntry ? todayEntry.present : false;
+
+    console.log("Utilisateur:", user.name, "Déjà présent:", isCurrentlyPresent);
+
+    // APPEL API CORRECT - Utilise l'endpoint POST /presences
+    const response = await axios.post(API_PRESENCES, {
+      userId: user._id,
+      date: today,
+      present: !isCurrentlyPresent, // Inverser le statut actuel
+      time: !isCurrentlyPresent ? timeStr : null // Time seulement si présent
+    }, { 
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } 
+    });
+
+    console.log("Réponse API:", response.data);
+
+    // Mise à jour locale optimiste
+    const updatedHistory = user.history || [];
+    const todayIndex = updatedHistory.findIndex(h => h.date === today);
+    
+    if (todayIndex >= 0) {
+      updatedHistory[todayIndex] = { 
+        date: today, 
+        present: !isCurrentlyPresent,
+        time: !isCurrentlyPresent ? timeStr : '--:--'
+      };
+    } else {
+      updatedHistory.push({ 
+        date: today, 
+        present: !isCurrentlyPresent,
+        time: !isCurrentlyPresent ? timeStr : '--:--'
+      });
+    }
+
+    const updatedUser = { 
+      ...user, 
+      history: updatedHistory,
+      presentToday: !isCurrentlyPresent 
+    };
+
+    setContacts(prev => prev.map(c => c._id === user._id ? updatedUser : c));
+
+    showSnackbar(`${user.name} marqué comme ${!isCurrentlyPresent ? 'présent' : 'absent'}`, 'success');
+    
+    // Fermer le scanner après un scan réussi
+    setTimeout(() => {
+      setScannerOpen(false);
+    }, 1500);
+
+  } catch (err) {
+    console.error("Erreur détaillée lors du scan:", err);
+    
+    if (err.response) {
+      const errorMessage = err.response.data?.error || 
+                          err.response.data?.message || 
+                          `Erreur serveur (${err.response.status})`;
+      showSnackbar(`Erreur: ${errorMessage}`, 'error');
+    } else if (err.request) {
+      showSnackbar("Pas de connexion au serveur. Vérifiez votre internet.", 'error');
+    } else {
+      showSnackbar("Erreur inconnue lors du scan", 'error');
+    }
+  }
+};
 
   // Colonnes sans le rôle admin
   const [allColumns, setAllColumns] = useState([

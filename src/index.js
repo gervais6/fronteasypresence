@@ -5,6 +5,8 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import 'bootstrap/dist/css/bootstrap.css';
 import { injectContentsquareScript } from '@contentsquare/tag-sdk';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 
 // Injecter le script Contentsquare
 const injectHotjarScript = (hjid) => {
