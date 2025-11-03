@@ -2425,10 +2425,98 @@ const Dashboard = () => {
   const [selectedChatContact, setSelectedChatContact] = useState(null);
   const [isTodoListModalOpen, setTodoListModalOpen] = useState(false);
 
+  // États pour la recherche avec suggestions
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
+
   const today = new Date().toISOString().split('T')[0];
 
   const showSnackbar = (message, severity = 'info') => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  // Fonction pour générer les suggestions basées sur les contacts
+  const generateSearchSuggestions = () => {
+    if (!contacts || contacts.length === 0) return [];
+
+    const suggestionsSet = new Set();
+
+    contacts.forEach(contact => {
+      // Ajouter le nom
+      if (contact.name) suggestionsSet.add(contact.name);
+      
+      // Ajouter la position
+      if (contact.position) suggestionsSet.add(contact.position);
+      
+      // Ajouter le département/QG
+      if (contact.qg) suggestionsSet.add(contact.qg);
+      
+      // Ajouter le lieu de travail
+      if (contact.workLocation) suggestionsSet.add(contact.workLocation);
+      
+      // Ajouter le type de contrat
+      if (contact.contractType) suggestionsSet.add(contact.contractType);
+      
+      // Ajouter l'activité
+      if (contact.activity) suggestionsSet.add(contact.activity);
+      
+      // Ajouter le manager
+      if (contact.manager) suggestionsSet.add(contact.manager);
+      
+      // Ajouter le mentor
+      if (contact.mentor) suggestionsSet.add(contact.mentor);
+      
+      // Ajouter la nationalité
+      if (contact.nationality) suggestionsSet.add(contact.nationality);
+      
+      // Ajouter l'email
+      if (contact.email) suggestionsSet.add(contact.email);
+    });
+
+    return Array.from(suggestionsSet).sort();
+  };
+
+  // Filtrer les suggestions basé sur la recherche
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setSuggestions(generateSearchSuggestions().slice(0, 10)); // Limiter à 10 suggestions
+    } else {
+      const allSuggestions = generateSearchSuggestions();
+      const filtered = allSuggestions.filter(suggestion =>
+        suggestion.toLowerCase().includes(searchTerm.toLowerCase())
+      ).slice(0, 10); // Limiter à 10 résultats
+      setSuggestions(filtered);
+    }
+  }, [searchTerm, contacts]);
+
+  // Fermer les suggestions quand on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSearchFocus = () => {
+    setShowSuggestions(true);
+    if (searchTerm === '') {
+      setSuggestions(generateSearchSuggestions().slice(0, 10));
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    setSearchTerm(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const handleSearchSubmit = () => {
+    // La recherche est déjà gérée par le filtrage des contacts via searchTerm
+    setShowSuggestions(false);
   };
 
   const handleOpenChat = (contact) => {
@@ -2800,7 +2888,7 @@ const Dashboard = () => {
           minHeight: '100vh',
         }}
       >
-        {/* Header avec personnalisations */}
+        {/* Header avec barre de recherche améliorée */}
         <header
           style={{
             position: "fixed",
@@ -2820,17 +2908,133 @@ const Dashboard = () => {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            {/* Barre de recherche améliorée */}
-            <div style={{ display: "flex", alignItems: "center", flex: 1, backgroundColor: "#f5f5f5", borderRadius: borderRadiusGlobal, padding: "4px 10px", margin: '0 20px', minWidth: 0 }}>
-              <SearchIcon style={{ color: "#555", marginRight: 6 }} />
+            {/* Barre de recherche avec suggestions style Odoo */}
+            <div ref={searchRef} style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              flex: 1, 
+              backgroundColor: "white", 
+              borderRadius: borderRadiusGlobal, 
+              padding: "2px 12px", 
+              margin: '0 20px', 
+              minWidth: 0,
+              border: "1px solid #e0e0e0",
+              position: "relative"
+            }}>
+              <SearchIcon style={{  marginRight: 8, fontSize: 20 }} />
               <TextField
-                placeholder="Rechercher un contact..."
+                placeholder="Rechercher un nom, poste, département..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={handleSearchFocus}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearchSubmit();
+                  }
+                }}
                 variant="standard"
-                InputProps={{ disableUnderline: true }}
-                sx={{ flex: 1, minWidth: 0, "& input": { fontSize: 14, color: "#333" } }}
+                InputProps={{ 
+                  disableUnderline: true,
+                  style: { fontSize: 14, color: "#333" }
+                }}
+                sx={{ 
+                  flex: 1, 
+                  minWidth: 0,
+                  "& .MuiInputBase-input": {
+                    padding: "8px 0",
+                    "&::placeholder": {
+                      color: "#8a8a8a",
+                      opacity: 1
+                    }
+                  }
+                }}
               />
+              {searchTerm && (
+                <IconButton 
+                  size="small" 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setShowSuggestions(false);
+                  }}
+                  sx={{ 
+                    color: '#8a8a8a',
+                    padding: '4px',
+                    '&:hover': { 
+                      backgroundColor: 'rgba(0,0,0,0.04)',
+                      color: '#666'
+                    }
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  backgroundColor: "white",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: borderRadiusGlobal,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  zIndex: 1000,
+                  maxHeight: "250px",
+                  overflowY: "auto",
+                  marginTop: "4px"
+                }}>
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      style={{
+                        padding: "10px 16px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f5f5f5",
+                        fontSize: "14px",
+                        color: "#333",
+                        transition: "background-color 0.2s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = "#f8f9fa";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = "white";
+                      }}
+                    >
+                      <SearchIcon style={{ fontSize: 16, color: "#8a8a8a" }} />
+                      {suggestion}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Message si pas de résultats */}
+              {showSuggestions && suggestions.length === 0 && searchTerm && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  backgroundColor: "white",
+                  border: "1px solid #e0e0e0",
+                  borderRadius: borderRadiusGlobal,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  zIndex: 1000,
+                  padding: "16px",
+                  fontSize: "14px",
+                  color: "#666",
+                  marginTop: "4px",
+                  textAlign: "center"
+                }}>
+                  Aucun résultat trouvé pour "{searchTerm}"
+                </div>
+              )}
             </div>
 
             {/* Boutons d'action */}
@@ -2843,9 +3047,13 @@ const Dashboard = () => {
                     setTodoListModalOpen(true);
                   }}
                   sx={{ 
-                    border: `2px solid ${buttonColor}`, 
+                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
-                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                    backgroundColor: 'white',
+                    "&:hover": { 
+                      backgroundColor: `${buttonColor}08`,
+                      border: `1px solid ${buttonColor}`
+                    }
                   }}
                 >
                   <TaskIcon />
@@ -2860,9 +3068,13 @@ const Dashboard = () => {
                     setNotificationsAnchor(event.currentTarget);
                   }}
                   sx={{ 
-                    border: `2px solid ${buttonColor}`, 
+                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
-                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                    backgroundColor: 'white',
+                    "&:hover": { 
+                      backgroundColor: `${buttonColor}08`,
+                      border: `1px solid ${buttonColor}`
+                    }
                   }}
                 >
                   <Badge 
@@ -2890,9 +3102,13 @@ const Dashboard = () => {
                     setNewEntryModalOpen(true); 
                   }}
                   sx={{ 
-                    border: `2px solid ${buttonColor}`, 
+                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
-                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                    backgroundColor: 'white',
+                    "&:hover": { 
+                      backgroundColor: `${buttonColor}08`,
+                      border: `1px solid ${buttonColor}`
+                    }
                   }}
                 >
                   <AddIcon />
@@ -2907,9 +3123,13 @@ const Dashboard = () => {
                     setScannerOpen(true);
                   }}
                   sx={{ 
-                    border: `2px solid ${buttonColor}`, 
+                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
-                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                    backgroundColor: 'white',
+                    "&:hover": { 
+                      backgroundColor: `${buttonColor}08`,
+                      border: `1px solid ${buttonColor}`
+                    }
                   }}
                 >
                   <QrCodeScannerIcon />
@@ -2924,10 +3144,14 @@ const Dashboard = () => {
                     exportCompanyQrToPdf();
                   }}
                   sx={{ 
-                    border: `2px solid ${buttonColor}`, 
+                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
-                    fontSize:12,
-                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                    backgroundColor: 'white',
+                    fontSize: 12,
+                    "&:hover": { 
+                      backgroundColor: `${buttonColor}08`,
+                      border: `1px solid ${buttonColor}`
+                    }
                   }}
                 >
                   <PictureAsPdfIcon />
@@ -3476,17 +3700,26 @@ const Dashboard = () => {
                             );
                           case "presentToday":
                             return (
-                              <TableCell key={col.key} align="center">
-                                <Chip
-                                  label={contact.presentToday ? "Présent" : "Absent"}
-                                  sx={{ 
-                                    backgroundColor: contact.presentToday ? "#4caf50" : "#f44336", 
-                                    color: "#fff",
-                                    fontWeight: 500,
-                                    borderRadius: borderRadiusGlobal
-                                  }}
-                                />
-                              </TableCell>
+                                <TableCell key={col.key} align="center">
+      <Tooltip title={contact.presentToday ? "Présent - Cliquer pour marquer absent" : "Absent - Cliquer pour marquer présent"}>
+        <Box 
+          sx={{ 
+            fontSize: '2rem',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+            }
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleTogglePresence(contact._id);
+          }}
+        >
+          {contact.presentToday ? '🟢' : '🔴'}
+        </Box>
+      </Tooltip>
+    </TableCell>
                             );
                           case "contractStart":
                           case "contractEnd":
