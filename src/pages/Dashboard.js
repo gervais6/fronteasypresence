@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import axios from 'axios';
 
@@ -37,7 +37,15 @@ import {
   Select,
   Collapse,
   Avatar,
-  Chip
+  Chip,
+  Card,
+  CardContent,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemSecondaryAction
 } from '@mui/material';
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
@@ -54,6 +62,20 @@ import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ChatIcon from '@mui/icons-material/Chat';
 import PhoneIcon from '@mui/icons-material/Phone';
+import SendIcon from '@mui/icons-material/Send';
+import VideocamIcon from '@mui/icons-material/Videocam';
+import VideocamOffIcon from '@mui/icons-material/VideocamOff';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
+import CallEndIcon from '@mui/icons-material/CallEnd';
+import ScreenShareIcon from '@mui/icons-material/ScreenShare';
+import StopScreenShareIcon from '@mui/icons-material/StopScreenShare';
+import TaskIcon from '@mui/icons-material/Task';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
+import EventIcon from '@mui/icons-material/Event';
+import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import { FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { HiOutlineUserCircle } from 'react-icons/hi';
 import { QRCodeSVG } from 'qrcode.react';
@@ -87,6 +109,21 @@ const USER_ROLES = [
   { value: 'autre', label: 'Autre' }
 ];
 
+// Types de tâches pour la Todo List
+const TASK_PRIORITIES = [
+  { value: 'low', label: 'Basse', color: '#4CAF50' },
+  { value: 'medium', label: 'Moyenne', color: '#FF9800' },
+  { value: 'high', label: 'Haute', color: '#F44336' }
+];
+
+const TASK_CATEGORIES = [
+  { value: 'work', label: 'Travail' },
+  { value: 'personal', label: 'Personnel' },
+  { value: 'shopping', label: 'Courses' },
+  { value: 'health', label: 'Santé' },
+  { value: 'other', label: 'Autre' }
+];
+
 const COMPANY_ID = localStorage.getItem('companyId') || 'company_123';
 
 // Utilitaires améliorés
@@ -106,6 +143,21 @@ const formatDateForDisplay = (dateString) => {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+const formatDateTimeForDisplay = (dateString) => {
+  if (!dateString) return '-';
+  try {
+    return new Date(dateString).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   } catch {
     return dateString;
@@ -154,12 +206,10 @@ const validateUserForm = (formData, isEdit = false) => {
 const getImageUrl = (imagePath) => {
   if (!imagePath) return null;
   
-  // Si c'est déjà une URL complète ou une URL blob, la retourner telle quelle
   if (imagePath.startsWith('http') || imagePath.startsWith('blob:')) {
     return imagePath;
   }
   
-  // Si c'est un chemin relatif, construire l'URL complète
   if (imagePath.startsWith('/uploads/') || imagePath.includes('uploads')) {
     const baseUrl = 'https://backendeasypresence.onrender.com';
     if (imagePath.startsWith('/')) {
@@ -185,7 +235,6 @@ const SafeAvatar = ({ src, alt, ...props }) => {
 
   const handleError = () => {
     if (retryCount < 2) {
-      // Réessayer après un délai
       setTimeout(() => {
         setImgError(false);
         setRetryCount(prev => prev + 1);
@@ -209,12 +258,520 @@ const SafeAvatar = ({ src, alt, ...props }) => {
       src={imageUrl}
       alt={alt}
       onError={handleError}
-      key={`${imageUrl}-${retryCount}`} // Force le re-render quand l'URL change
+      key={`${imageUrl}-${retryCount}`}
     />
   );
 };
 
-// Hook personnalisé pour la gestion des formulaires avec gestion améliorée des URLs
+// Hook pour la gestion des tâches
+const useTodoList = () => {
+  const [tasks, setTasks] = useState([]);
+
+  // Charger les tâches depuis le localStorage au démarrage
+  useEffect(() => {
+    const savedTasks = localStorage.getItem('todoList');
+    if (savedTasks) {
+      try {
+        setTasks(JSON.parse(savedTasks));
+      } catch (error) {
+        console.error('Erreur lors du chargement des tâches:', error);
+      }
+    }
+  }, []);
+
+  // Sauvegarder les tâches dans le localStorage à chaque modification
+  useEffect(() => {
+    localStorage.setItem('todoList', JSON.stringify(tasks));
+  }, [tasks]);
+
+  const addTask = (task) => {
+    const newTask = {
+      id: Date.now().toString(),
+      title: task.title,
+      description: task.description || '',
+      priority: task.priority || 'medium',
+      category: task.category || 'work',
+      dueDate: task.dueDate || '',
+      completed: false,
+      createdAt: new Date().toISOString(),
+      assignedTo: task.assignedTo || null
+    };
+    setTasks(prev => [newTask, ...prev]);
+    return newTask;
+  };
+
+  const updateTask = (taskId, updates) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId ? { ...task, ...updates } : task
+    ));
+  };
+
+  const deleteTask = (taskId) => {
+    setTasks(prev => prev.filter(task => task.id !== taskId));
+  };
+
+  const toggleTaskCompletion = (taskId) => {
+    setTasks(prev => prev.map(task => 
+      task.id === taskId ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const clearCompletedTasks = () => {
+    setTasks(prev => prev.filter(task => !task.completed));
+  };
+
+  return {
+    tasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleTaskCompletion,
+    clearCompletedTasks
+  };
+};
+
+// Modal pour la Todo List
+const TodoListModal = ({ open, onClose, contacts }) => {
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    category: 'work',
+    dueDate: '',
+    assignedTo: ''
+  });
+  const [filter, setFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('dueDate');
+  const { buttonColor } = useContext(CustomizationContext);
+  
+  const {
+    tasks,
+    addTask,
+    updateTask,
+    deleteTask,
+    toggleTaskCompletion,
+    clearCompletedTasks
+  } = useTodoList();
+
+  const handleAddTask = () => {
+    if (!newTask.title.trim()) return;
+    
+    addTask(newTask);
+    setNewTask({
+      title: '',
+      description: '',
+      priority: 'medium',
+      category: 'work',
+      dueDate: '',
+      assignedTo: ''
+    });
+  };
+
+  const handleInputChange = (field, value) => {
+    setNewTask(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'completed') return task.completed;
+    if (filter === 'active') return !task.completed;
+    if (filter === 'overdue') {
+      if (!task.dueDate) return false;
+      return new Date(task.dueDate) < new Date() && !task.completed;
+    }
+    return true;
+  });
+
+  const sortedTasks = [...filteredTasks].sort((a, b) => {
+    switch (sortBy) {
+      case 'dueDate':
+        return new Date(a.dueDate || '9999-12-31') - new Date(b.dueDate || '9999-12-31');
+      case 'priority':
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      case 'createdAt':
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      default:
+        return 0;
+    }
+  });
+
+  const getPriorityIcon = (priority) => {
+    const priorityConfig = TASK_PRIORITIES.find(p => p.value === priority);
+    return (
+      <PriorityHighIcon 
+        sx={{ 
+          color: priorityConfig?.color || '#666',
+          fontSize: 16 
+        }} 
+      />
+    );
+  };
+
+  const getCategoryIcon = (category) => {
+    const categoryConfig = TASK_CATEGORIES.find(c => c.value === category);
+    return (
+      <EventIcon 
+        sx={{ 
+          color: buttonColor,
+          fontSize: 16 
+        }} 
+      />
+    );
+  };
+
+  const isTaskOverdue = (task) => {
+    if (!task.dueDate || task.completed) return false;
+    return new Date(task.dueDate) < new Date();
+  };
+
+  const completedCount = tasks.filter(task => task.completed).length;
+  const totalCount = tasks.length;
+  const overdueCount = tasks.filter(task => isTaskOverdue(task)).length;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          height: '90vh'
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        backgroundColor: buttonColor,
+        color: 'white',
+        textAlign: 'center',
+        py: 3
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+          <TaskIcon sx={{ fontSize: 32 }} />
+          <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+            Ma Todo List
+          </Typography>
+        </Box>
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Statistiques */}
+        <Box sx={{ p: 2, backgroundColor: '#f8f9fa', borderBottom: '1px solid #e0e0e0' }}>
+          <Stack direction="row" spacing={3} justifyContent="center">
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: buttonColor }}>
+                {totalCount}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                Total
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4CAF50' }}>
+                {completedCount}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                Terminées
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#F44336' }}>
+                {overdueCount}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                En retard
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
+
+        {/* Formulaire d'ajout */}
+        <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
+          <Stack spacing={2}>
+            <TextField
+              label="Nouvelle tâche"
+              value={newTask.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              fullWidth
+              size="small"
+              placeholder="Quelle est votre prochaine tâche ?"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleAddTask();
+              }}
+            />
+            
+            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Priorité</InputLabel>
+                <Select
+                  value={newTask.priority}
+                  label="Priorité"
+                  onChange={(e) => handleInputChange('priority', e.target.value)}
+                >
+                  {TASK_PRIORITIES.map(priority => (
+                    <MenuItem key={priority.value} value={priority.value}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <PriorityHighIcon sx={{ color: priority.color, fontSize: 16 }} />
+                        {priority.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Catégorie</InputLabel>
+                <Select
+                  value={newTask.category}
+                  label="Catégorie"
+                  onChange={(e) => handleInputChange('category', e.target.value)}
+                >
+                  {TASK_CATEGORIES.map(category => (
+                    <MenuItem key={category.value} value={category.value}>
+                      {category.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <TextField
+                label="Échéance"
+                type="date"
+                value={newTask.dueDate}
+                onChange={(e) => handleInputChange('dueDate', e.target.value)}
+                size="small"
+                InputLabelProps={{ shrink: true }}
+                sx={{ minWidth: 140 }}
+              />
+
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Assigner à</InputLabel>
+                <Select
+                  value={newTask.assignedTo}
+                  label="Assigner à"
+                  onChange={(e) => handleInputChange('assignedTo', e.target.value)}
+                >
+                  <MenuItem value="">Moi-même</MenuItem>
+                  {contacts.map(contact => (
+                    <MenuItem key={contact._id} value={contact._id}>
+                      {contact.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                onClick={handleAddTask}
+                variant="contained"
+                disabled={!newTask.title.trim()}
+                sx={{
+                  backgroundColor: buttonColor,
+                  '&:hover': { backgroundColor: buttonColor },
+                  minWidth: 100
+                }}
+              >
+                <AddIcon sx={{ mr: 1 }} />
+                Ajouter
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+
+        {/* Filtres et tris */}
+        <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', backgroundColor: '#f5f5f5' }}>
+          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" spacing={1}>
+              {['all', 'active', 'completed', 'overdue'].map(filterType => (
+                <Chip
+                  key={filterType}
+                  label={
+                    filterType === 'all' ? 'Toutes' :
+                    filterType === 'active' ? 'Actives' :
+                    filterType === 'completed' ? 'Terminées' : 'En retard'
+                  }
+                  variant={filter === filterType ? "filled" : "outlined"}
+                  onClick={() => setFilter(filterType)}
+                  sx={{
+                    backgroundColor: filter === filterType ? buttonColor : 'transparent',
+                    color: filter === filterType ? 'white' : buttonColor,
+                    borderColor: buttonColor,
+                    fontSize: '0.75rem'
+                  }}
+                />
+              ))}
+            </Stack>
+
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel>Trier par</InputLabel>
+              <Select
+                value={sortBy}
+                label="Trier par"
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value="dueDate">Échéance</MenuItem>
+                <MenuItem value="priority">Priorité</MenuItem>
+                <MenuItem value="createdAt">Date création</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+        </Box>
+
+        {/* Liste des tâches */}
+        <Box sx={{ flex: 1, overflow: 'auto' }}>
+          {sortedTasks.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <TaskIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
+              <Typography variant="body1" color="textSecondary">
+                {filter === 'completed' ? 'Aucune tâche terminée' :
+                 filter === 'active' ? 'Aucune tâche en cours' :
+                 filter === 'overdue' ? 'Aucune tâche en retard' : 'Aucune tâche'}
+              </Typography>
+            </Box>
+          ) : (
+            <List>
+              {sortedTasks.map(task => {
+                const assignedContact = contacts.find(c => c._id === task.assignedTo);
+                const isOverdue = isTaskOverdue(task);
+                
+                return (
+                  <ListItem
+                    key={task.id}
+                    sx={{
+                      borderBottom: '1px solid #f0f0f0',
+                      backgroundColor: task.completed ? '#f8f9fa' : 'white',
+                      opacity: task.completed ? 0.7 : 1,
+                      '&:hover': {
+                        backgroundColor: task.completed ? '#f0f0f0' : '#fafafa'
+                      }
+                    }}
+                  >
+                    <ListItemIcon>
+                      <IconButton 
+                        onClick={() => toggleTaskCompletion(task.id)}
+                        sx={{ 
+                          color: task.completed ? '#4CAF50' : '#ccc',
+                          '&:hover': { 
+                            color: task.completed ? '#45a049' : buttonColor 
+                          }
+                        }}
+                      >
+                        {task.completed ? <RadioButtonCheckedIcon /> : <RadioButtonUncheckedIcon />}
+                      </IconButton>
+                    </ListItemIcon>
+
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              textDecoration: task.completed ? 'line-through' : 'none',
+                              fontWeight: task.priority === 'high' ? 'bold' : 'normal',
+                              color: task.completed ? 'text.secondary' : 'text.primary'
+                            }}
+                          >
+                            {task.title}
+                          </Typography>
+                          {getPriorityIcon(task.priority)}
+                          {getCategoryIcon(task.category)}
+                          {isOverdue && !task.completed && (
+                            <Chip
+                              label="En retard"
+                              size="small"
+                              sx={{
+                                backgroundColor: '#F44336',
+                                color: 'white',
+                                fontSize: '0.6rem',
+                                height: 20
+                              }}
+                            />
+                          )}
+                        </Box>
+                      }
+                      secondary={
+                        <Box>
+                          {task.description && (
+                            <Typography variant="body2" color="textSecondary" sx={{ mb: 0.5 }}>
+                              {task.description}
+                            </Typography>
+                          )}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: '0.75rem', color: 'text.secondary' }}>
+                            {task.dueDate && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <EventIcon sx={{ fontSize: 14 }} />
+                                {formatDateForDisplay(task.dueDate)}
+                              </Box>
+                            )}
+                            {assignedContact && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <SafeAvatar
+                                  src={assignedContact.image || assignedContact.imageUrl}
+                                  alt={assignedContact.name}
+                                  sx={{ width: 20, height: 20 }}
+                                />
+                                {assignedContact.name}
+                              </Box>
+                            )}
+                          </Box>
+                        </Box>
+                      }
+                    />
+
+                    <ListItemSecondaryAction>
+                      <Stack direction="row" spacing={1}>
+                        <Tooltip title="Supprimer">
+                          <IconButton 
+                            edge="end" 
+                            onClick={() => deleteTask(task.id)}
+                            sx={{ 
+                              color: '#f44336',
+                              '&:hover': { backgroundColor: '#ffebee' }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                );
+              })}
+            </List>
+          )}
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ justifyContent: 'space-between', p: 2, borderTop: '1px solid #e0e0e0' }}>
+        <Button
+          onClick={clearCompletedTasks}
+          disabled={completedCount === 0}
+          sx={{
+            color: '#f44336',
+            '&:hover': { backgroundColor: '#ffebee' }
+          }}
+        >
+          Supprimer les terminées
+        </Button>
+        <Button
+          onClick={onClose}
+          sx={{
+            backgroundColor: buttonColor,
+            color: 'white',
+            '&:hover': { backgroundColor: buttonColor }
+          }}
+        >
+          Fermer
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+// Hook personnalisé pour la gestion des formulaires
 const useUserForm = (initialUser = null) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -242,23 +799,20 @@ const useUserForm = (initialUser = null) => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
-  // Nettoyer les URLs temporaires
   useEffect(() => {
     return () => {
-      // Nettoyage des URLs temporaires quand le composant est démonté
       if (imagePreview && imagePreview.startsWith('blob:')) {
         URL.revokeObjectURL(imagePreview);
       }
     };
   }, []);
 
-  // Initialiser le formulaire avec les données de l'utilisateur
   useEffect(() => {
     if (initialUser) {
       setFormData({
         name: initialUser.name || '',
         email: initialUser.email || '',
-        password: '', // Mot de passe vide pour l'édition
+        password: '',
         role: initialUser.role || 'employe',
         position: initialUser.position || '',
         number: initialUser.number || '',
@@ -276,7 +830,6 @@ const useUserForm = (initialUser = null) => {
         manager: initialUser.manager || '',
         nationality: initialUser.nationality || ''
       });
-      // Utiliser l'URL permanente de l'image existante
       setImagePreview(initialUser.image || initialUser.imageUrl || null);
     }
   }, [initialUser]);
@@ -287,7 +840,6 @@ const useUserForm = (initialUser = null) => {
       [field]: value
     }));
 
-    // Effacer l'erreur du champ lorsqu'il est modifié
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
@@ -297,7 +849,6 @@ const useUserForm = (initialUser = null) => {
   };
 
   const handleImageChange = (file) => {
-    // Nettoyer l'ancienne URL temporaire
     if (imagePreview && imagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview);
     }
@@ -318,7 +869,6 @@ const useUserForm = (initialUser = null) => {
   };
 
   const resetForm = () => {
-    // Nettoyer l'URL temporaire
     if (imagePreview && imagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview);
     }
@@ -361,7 +911,7 @@ const useUserForm = (initialUser = null) => {
   };
 };
 
-// Intercepteur axios pour ajouter le token automatiquement
+// Intercepteur axios
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -375,7 +925,6 @@ axios.interceptors.request.use(
   }
 );
 
-// Gestionnaire d'erreurs global amélioré
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -385,12 +934,6 @@ axios.interceptors.response.use(
     switch (status) {
       case 401:
         handleLogout();
-        break;
-      case 403:
-        break;
-      case 404:
-        break;
-      case 500:
         break;
       default:
         break;
@@ -568,7 +1111,537 @@ const LoadingSpinner = ({ size = 40, color = '#4A2C2A' }) => (
   </Box>
 );
 
-// Modal pour ajouter/modifier un utilisateur
+// Modal pour la visioconférence
+const VideoCallModal = ({ open, onClose, contact }) => {
+  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isAudioOn, setIsAudioOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const { buttonColor } = useContext(CustomizationContext);
+
+  useEffect(() => {
+    let interval;
+    if (open) {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+      
+      // Simulation d'un appel (dans une vraie app, vous utiliseriez WebRTC)
+      simulateCall();
+    }
+
+    return () => {
+      clearInterval(interval);
+      setCallDuration(0);
+    };
+  }, [open]);
+
+  const simulateCall = () => {
+    // Simulation d'un appel vidéo
+    if (localVideoRef.current) {
+      // Dans une vraie application, vous configureriez les streams vidéo ici
+      console.log('Simulation d\'appel vidéo avec', contact?.name);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleToggleVideo = () => {
+    setIsVideoOn(!isVideoOn);
+    // Ici, vous désactiveriez le flux vidéo
+  };
+
+  const handleToggleAudio = () => {
+    setIsAudioOn(!isAudioOn);
+    // Ici, vous désactiveriez l'audio
+  };
+
+  const handleToggleScreenShare = () => {
+    setIsScreenSharing(!isScreenSharing);
+    // Ici, vous géreriez le partage d'écran
+  };
+
+  const handleEndCall = () => {
+    onClose();
+  };
+
+  if (!contact) return null;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{ 
+        style: { 
+          borderRadius: 15,
+          height: '85vh',
+          display: 'flex',
+          flexDirection: 'column'
+        } 
+      }}
+    >
+      {/* En-tête de l'appel */}
+      <DialogTitle sx={{ 
+        borderBottom: '1px solid #e0e0e0',
+        backgroundColor: buttonColor,
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        py: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <SafeAvatar
+            src={contact.image || contact.imageUrl}
+            alt={contact.name}
+            sx={{ width: 50, height: 50 }}
+          />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              {contact.name}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {contact.position} • {formatTime(callDuration)}
+            </Typography>
+          </Box>
+        </Box>
+        <Chip 
+          label="En appel" 
+          sx={{ 
+            backgroundColor: '#4CAF50', 
+            color: 'white',
+            fontWeight: 'bold'
+          }} 
+        />
+      </DialogTitle>
+
+      <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 0, backgroundColor: '#1a1a1a' }}>
+        {/* Zone vidéo */}
+        <Box sx={{ flex: 1, display: 'flex', position: 'relative', p: 2 }}>
+          {/* Vidéo distante (grande) */}
+          <Box 
+            sx={{ 
+              flex: 1, 
+              backgroundColor: '#2d2d2d', 
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            {isVideoOn ? (
+              <Box
+                ref={remoteVideoRef}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#3d3d3d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 2
+                }}
+              >
+                <SafeAvatar
+                  src={contact.image || contact.imageUrl}
+                  alt={contact.name}
+                  sx={{ width: 120, height: 120 }}
+                />
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    position: 'absolute', 
+                    bottom: 16, 
+                    left: 16, 
+                    color: 'white',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2
+                  }}
+                >
+                  {contact.name}
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ textAlign: 'center', color: 'white' }}>
+                <VideocamOffIcon sx={{ fontSize: 60, mb: 2 }} />
+                <Typography variant="h6">Caméra éteinte</Typography>
+              </Box>
+            )}
+          </Box>
+
+          {/* Vidéo locale (petite) */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 16,
+              right: 16,
+              width: 200,
+              height: 150,
+              backgroundColor: '#2d2d2d',
+              borderRadius: 2,
+              border: '2px solid #fff',
+              overflow: 'hidden'
+            }}
+          >
+            {isVideoOn ? (
+              <Box
+                ref={localVideoRef}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#4d4d4d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <SafeAvatar
+                  src={null} // Votre propre avatar
+                  alt="Vous"
+                  sx={{ width: 60, height: 60 }}
+                />
+              </Box>
+            ) : (
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'white'
+              }}>
+                <VideocamOffIcon />
+              </Box>
+            )}
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                position: 'absolute', 
+                bottom: 4, 
+                left: 8, 
+                color: 'white',
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                px: 1,
+                borderRadius: 1
+              }}
+            >
+              Vous
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Contrôles d'appel */}
+        <Box sx={{ p: 3, backgroundColor: '#2d2d2d', borderTop: '1px solid #404040' }}>
+          <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
+            {/* Contrôle audio */}
+            <Tooltip title={isAudioOn ? "Couper le micro" : "Activer le micro"}>
+              <IconButton 
+                onClick={handleToggleAudio}
+                sx={{ 
+                  backgroundColor: isAudioOn ? buttonColor : '#f44336',
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  '&:hover': { 
+                    backgroundColor: isAudioOn ? `${buttonColor}dd` : '#d32f2f'
+                  }
+                }}
+              >
+                {isAudioOn ? <MicIcon /> : <MicOffIcon />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Contrôle vidéo */}
+            <Tooltip title={isVideoOn ? "Couper la caméra" : "Activer la caméra"}>
+              <IconButton 
+                onClick={handleToggleVideo}
+                sx={{ 
+                  backgroundColor: isVideoOn ? buttonColor : '#f44336',
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  '&:hover': { 
+                    backgroundColor: isVideoOn ? `${buttonColor}dd` : '#d32f2f'
+                  }
+                }}
+              >
+                {isVideoOn ? <VideocamIcon /> : <VideocamOffIcon />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Partage d'écran */}
+            <Tooltip title={isScreenSharing ? "Arrêter le partage" : "Partager l'écran"}>
+              <IconButton 
+                onClick={handleToggleScreenShare}
+                sx={{ 
+                  backgroundColor: isScreenSharing ? '#ff9800' : buttonColor,
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  '&:hover': { 
+                    backgroundColor: isScreenSharing ? '#f57c00' : `${buttonColor}dd`
+                  }
+                }}
+              >
+                {isScreenSharing ? <StopScreenShareIcon /> : <ScreenShareIcon />}
+              </IconButton>
+            </Tooltip>
+
+            {/* Raccrocher */}
+            <Tooltip title="Raccrocher">
+              <IconButton 
+                onClick={handleEndCall}
+                sx={{ 
+                  backgroundColor: '#f44336',
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  '&:hover': { 
+                    backgroundColor: '#d32f2f',
+                    transform: 'scale(1.1)'
+                  }
+                }}
+              >
+                <CallEndIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Modal pour le chat (design amélioré)
+const ChatModal = ({ open, onClose, contact }) => {
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+  const { buttonColor } = useContext(CustomizationContext);
+
+  useEffect(() => {
+    if (open && contact) {
+      setMessages([
+        { id: 1, text: 'Bonjour ! Comment allez-vous ?', sender: 'them', timestamp: new Date(Date.now() - 1000 * 60 * 5) },
+        { id: 2, text: 'Je vais bien, merci. Et vous ?', sender: 'me', timestamp: new Date(Date.now() - 1000 * 60 * 3) },
+        { id: 3, text: 'Très bien aussi, merci ! Avez-vous terminé le rapport ?', sender: 'them', timestamp: new Date(Date.now() - 1000 * 60 * 1) },
+      ]);
+    }
+  }, [open, contact]);
+
+  const handleSendMessage = () => {
+    if (message.trim() === '') return;
+
+    const newMessage = {
+      id: messages.length + 1,
+      text: message,
+      sender: 'me',
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+    setMessage('');
+
+    setTimeout(() => {
+      const autoReply = {
+        id: messages.length + 2,
+        text: 'Merci pour votre message ! Je vous répondrai dès que possible.',
+        sender: 'them',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, autoReply]);
+    }, 1000);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  if (!contact) return null;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ 
+        style: { 
+          borderRadius: 15, 
+          height: '80vh',
+          display: 'flex',
+          flexDirection: 'column'
+        } 
+      }}
+    >
+      {/* En-tête du chat */}
+      <DialogTitle sx={{ 
+        borderBottom: '1px solid #e0e0e0',
+        backgroundColor: buttonColor,
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        py: 2
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <SafeAvatar
+            src={contact.image || contact.imageUrl}
+            alt={contact.name}
+            sx={{ width: 45, height: 45 }}
+          />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              {contact.name}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+              {contact.position}
+            </Typography>
+          </Box>
+        </Box>
+        <Chip 
+          label="En ligne" 
+          size="small"
+          sx={{ 
+            backgroundColor: '#4CAF50', 
+            color: 'white' 
+          }} 
+        />
+      </DialogTitle>
+
+      <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 0 }}>
+        {/* Zone des messages */}
+        <Box sx={{ 
+          flex: 1, 
+          p: 2, 
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          backgroundColor: '#f8f9fa'
+        }}>
+          {messages.map((msg) => (
+            <Box
+              key={msg.id}
+              sx={{
+                display: 'flex',
+                justifyContent: msg.sender === 'me' ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <Box
+                sx={{
+                  maxWidth: '70%',
+                  p: 2,
+                  borderRadius: 3,
+                  backgroundColor: msg.sender === 'me' ? buttonColor : 'white',
+                  color: msg.sender === 'me' ? 'white' : 'text.primary',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  position: 'relative',
+                  '&::before': msg.sender === 'me' ? {} : {
+                    content: '""',
+                    position: 'absolute',
+                    left: -8,
+                    top: 12,
+                    width: 0,
+                    height: 0,
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent',
+                    borderRight: '8px solid white'
+                  },
+                  '&::after': msg.sender === 'me' ? {
+                    content: '""',
+                    position: 'absolute',
+                    right: -8,
+                    top: 12,
+                    width: 0,
+                    height: 0,
+                    borderTop: '8px solid transparent',
+                    borderBottom: '8px solid transparent',
+                    borderLeft: `8px solid ${buttonColor}`
+                  } : {}
+                }}
+              >
+                <Typography variant="body1" sx={{ lineHeight: 1.4 }}>
+                  {msg.text}
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    display: 'block',
+                    textAlign: 'right',
+                    mt: 0.5,
+                    opacity: 0.7,
+                    color: msg.sender === 'me' ? 'rgba(255,255,255,0.8)' : 'text.secondary'
+                  }}
+                >
+                  {msg.timestamp.toLocaleTimeString('fr-FR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+
+        {/* Zone de saisie */}
+        <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', backgroundColor: 'white' }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
+            <TextField
+              fullWidth
+              multiline
+              maxRows={3}
+              placeholder="Tapez votre message..."
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              variant="outlined"
+              size="small"
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 3,
+                }
+              }}
+            />
+            <IconButton 
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+              sx={{ 
+                backgroundColor: buttonColor,
+                color: 'white',
+                width: 48,
+                height: 48,
+                '&:hover': { backgroundColor: buttonColor, opacity: 0.9 },
+                '&:disabled': { backgroundColor: '#ccc' }
+              }}
+            >
+              <SendIcon />
+            </IconButton>
+          </Box>
+          <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block', textAlign: 'center' }}>
+            Appuyez sur Entrée pour envoyer
+          </Typography>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Modal pour ajouter/modifier un utilisateur (design amélioré)
 const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
   const {
     formData,
@@ -608,16 +1681,13 @@ const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
     try {
       const formDataToSend = new FormData();
       
-      // Ajouter tous les champs au FormData
       Object.keys(formData).forEach(key => {
         if (formData[key] !== '' && formData[key] !== null && formData[key] !== undefined) {
           formDataToSend.append(key, formData[key]);
         }
       });
       
-      // Si pas de nouvelle image mais on a une imagePreview existante (édition)
       if (!image && imagePreview && !imagePreview.startsWith('blob:')) {
-        // Conserver l'URL existante de l'image
         formDataToSend.append('existingImage', imagePreview);
       }
       
@@ -666,6 +1736,12 @@ const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
       helperText={errors[field]}
       InputLabelProps={type === 'date' ? { shrink: true } : {}}
       select={!!options}
+      size="small"
+      sx={{
+        '& .MuiOutlinedInput-root': {
+          borderRadius: 2,
+        }
+      }}
     >
       {options && options.map(option => (
         <MenuItem key={option.value} value={option.value}>
@@ -676,125 +1752,169 @@ const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
   );
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-      <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold', fontSize: 20 }}>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="lg" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        textAlign: 'center', 
+        fontWeight: 'bold', 
+        fontSize: 24,
+        backgroundColor: buttonColor,
+        color: 'white',
+        py: 3
+      }}>
         {contact ? 'Modifier utilisateur' : 'Ajouter utilisateur'}
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent sx={{ mt: 2 }}>
         <Stack spacing={3} alignItems="stretch">
           {/* Avatar amélioré */}
-          <Box sx={{ position: 'relative', width: 120, height: 120, mx: 'auto' }}>
-            {imagePreview ? (
-              <>
-                <SafeAvatar 
-                  src={imagePreview} 
-                  alt="Aperçu" 
-                  sx={{ width: 120, height: 120 }} 
-                />
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Box sx={{ position: 'relative', width: 120, height: 120 }}>
+              {imagePreview ? (
+                <>
+                  <SafeAvatar 
+                    src={imagePreview} 
+                    alt="Aperçu" 
+                    sx={{ width: 120, height: 120 }} 
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={() => handleImageChange(null)}
+                    sx={{ 
+                      position: 'absolute', 
+                      top: -5, 
+                      right: -5, 
+                      backgroundColor: 'white',
+                      boxShadow: 2,
+                      '&:hover': { backgroundColor: '#f5f5f5' }
+                    }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </>
+              ) : (
                 <IconButton
-                  size="small"
-                  onClick={() => handleImageChange(null)}
-                  sx={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(255,255,255,0.8)' }}
+                  component="label"
+                  sx={{
+                    borderRadius: '50%',
+                    border: '2px dashed #ccc',
+                    width: 120,
+                    height: 120,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    backgroundColor: '#fafafa',
+                    '&:hover': { backgroundColor: '#f0f0f0' }
+                  }}
                 >
-                  <CloseIcon fontSize="small" />
+                  <PhotoCamera fontSize="large" sx={{ color: '#666' }} />
+                  <input 
+                    hidden 
+                    accept="image/*" 
+                    type="file" 
+                    onChange={(e) => handleImageChange(e.target.files[0])} 
+                  />
                 </IconButton>
-              </>
-            ) : (
-              <IconButton
-                component="label"
-                sx={{
-                  borderRadius: '50%',
-                  border: '2px dashed #ccc',
-                  width: 120,
-                  height: 120,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-              >
-                <PhotoCamera fontSize="large" />
-                <input 
-                  hidden 
-                  accept="image/*" 
-                  type="file" 
-                  onChange={(e) => handleImageChange(e.target.files[0])} 
-                />
-              </IconButton>
-            )}
+              )}
+            </Box>
           </Box>
 
-          {/* Informations de base */}
-          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
-            Informations de base
-          </Typography>
+          {/* Sections avec cartes */}
+          <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, color: buttonColor, fontWeight: 'bold' }}>
+                Informations de base
+              </Typography>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={2}>
+                  {renderField('name', 'Nom complet *')}
+                  {renderField('position', 'Position *')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('number', 'Numéro *')}
+                  {renderField('qg', 'QG *')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('email', 'Email *', 'email')}
+                  {!contact && renderField('password', 'Mot de passe *', 'password')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('role', 'Rôle', 'select', USER_ROLES)}
+                  {renderField('nationality', 'Nationalité')}
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
 
-          <Stack direction="row" spacing={2}>
-            {renderField('name', 'Nom complet *')}
-            {renderField('position', 'Position *')}
-          </Stack>
+          <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, color: buttonColor, fontWeight: 'bold' }}>
+                Informations professionnelles
+              </Typography>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={2}>
+                  {renderField('workLocation', 'Lieu de travail')}
+                  {renderField('contractType', 'Type de contrat', 'select', CONTRACT_TYPES)}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('contractStart', 'Début du contrat', 'date')}
+                  {renderField('contractEnd', 'Fin du contrat', 'date')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('salary', 'Salaire', 'number')}
+                  {renderField('manager', 'Manager')}
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
 
-          <Stack direction="row" spacing={2}>
-            {renderField('number', 'Numéro *')}
-            {renderField('qg', 'QG *')}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('email', 'Email *', 'email')}
-            {!contact && renderField('password', 'Mot de passe *', 'password')}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('role', 'Rôle', 'select', USER_ROLES)}
-            {renderField('nationality', 'Nationalité')}
-          </Stack>
-
-          {/* Informations professionnelles */}
-          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
-            Informations professionnelles
-          </Typography>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('workLocation', 'Lieu de travail')}
-            {renderField('contractType', 'Type de contrat', 'select', CONTRACT_TYPES)}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('contractStart', 'Début du contrat', 'date')}
-            {renderField('contractEnd', 'Fin du contrat', 'date')}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('salary', 'Salaire', 'number')}
-            {renderField('manager', 'Manager')}
-          </Stack>
-
-          {/* Relations et activités */}
-          <Typography variant="h6" sx={{ mt: 2, color: '#4A2C2A' }}>
-            Relations et activités
-          </Typography>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('mentor', 'Mentor')}
-            {renderField('activityBy', 'Activité assignée par')}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('activity', 'Activité en cours', 'text')}
-            {renderField('activityDeadline', 'Date limite activité', 'date')}
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            {renderField('birthday', 'Anniversaire', 'date')}
-          </Stack>
+          <Card sx={{ borderRadius: 2, boxShadow: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, color: buttonColor, fontWeight: 'bold' }}>
+                Relations et activités
+              </Typography>
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={2}>
+                  {renderField('mentor', 'Mentor')}
+                  {renderField('activityBy', 'Activité assignée par')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('activity', 'Activité en cours', 'text')}
+                  {renderField('activityDeadline', 'Date limite activité', 'date')}
+                </Stack>
+                <Stack direction="row" spacing={2}>
+                  {renderField('birthday', 'Anniversaire', 'date')}
+                </Stack>
+              </Stack>
+            </CardContent>
+          </Card>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: 'center', mt: 2 }}>
+      <DialogActions sx={{ justifyContent: 'center', mt: 2, pb: 3, gap: 2 }}>
         <Button 
           onClick={onClose} 
           variant="outlined" 
-          sx={{ px: 3, py: 1 }}
+          sx={{ 
+            px: 4, 
+            py: 1,
+            borderRadius: 2,
+            borderColor: buttonColor,
+            color: buttonColor,
+            '&:hover': {
+              borderColor: buttonColor,
+              backgroundColor: `${buttonColor}08`
+            }
+          }}
           disabled={loading}
         >
           Annuler
@@ -804,24 +1924,37 @@ const NewEntryModal = ({ open, onClose, onSave, contact, showSnackbar }) => {
           variant="contained"
           disabled={loading}
           sx={{
-            px: 3,
+            px: 4,
             py: 1,
+            borderRadius: 2,
             backgroundColor: buttonColor,
-            '&:hover': { backgroundColor: buttonColor, opacity: 0.9 },
+            '&:hover': { 
+              backgroundColor: buttonColor,
+              boxShadow: `0 4px 12px ${buttonColor}40`
+            },
             '&:disabled': { opacity: 0.6 }
           }}
         >
-          {loading ? 'Enregistrement...' : 'Enregistrer'}
+          {loading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CircularProgress size={16} sx={{ color: 'white' }} />
+              Enregistrement...
+            </Box>
+          ) : (
+            'Enregistrer'
+          )}
         </Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-// Modal pour afficher l'historique amélioré
+// Modal pour afficher l'historique (design amélioré)
 const HistoryModal = ({ open, onClose, contact }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [videoCallModalOpen, setVideoCallModalOpen] = useState(false);
   const { buttonColor } = useContext(CustomizationContext);
 
   useEffect(() => {
@@ -848,15 +1981,15 @@ const HistoryModal = ({ open, onClose, contact }) => {
     }
   };
 
-  // Fonction pour contacter l'utilisateur
   const handleContact = (type) => {
     if (!contact) return;
     
     if (type === 'call' && contact.number) {
       window.open(`tel:${contact.number}`, '_self');
-    } else if (type === 'chat' && contact.number) {
-      // Ouvrir WhatsApp avec le numéro
-      window.open(`https://wa.me/${contact.number.replace(/\s/g, '')}`, '_blank');
+    } else if (type === 'chat') {
+      setChatModalOpen(true);
+    } else if (type === 'video') {
+      setVideoCallModalOpen(true);
     } else {
       alert(`Fonction ${type} non disponible pour cet utilisateur`);
     }
@@ -865,183 +1998,229 @@ const HistoryModal = ({ open, onClose, contact }) => {
   if (!contact) return null;
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{ style: { borderRadius: 15, padding: 20 } }}
-    >
-      {/* En-tête amélioré avec photo et informations de contact */}
-      <Box sx={{ textAlign: 'center', mb: 3, position: 'relative' }}>
-        {/* Photo de profil et informations */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-          <SafeAvatar
-            src={contact.image || contact.imageUrl}
-            alt={contact.name}
-            sx={{ 
-              width: 80, 
-              height: 80, 
-              border: `3px solid ${buttonColor}`,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
-          />
-        </Box>
-
-        <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#2c2c2c', mb: 1 }}>
-          {contact.name}
-        </Typography>
-        
-        <Typography variant="body1" sx={{ color: '#6b7280', mb: 2 }}>
-          {contact.position}
-        </Typography>
-
-        {/* Boutons de contact */}
-        <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 2 }}>
-          <Tooltip title={`Appeler ${contact.number || ''}`}>
-            <IconButton 
-              onClick={() => handleContact('call')}
-              sx={{ 
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                '&:hover': { backgroundColor: '#45a049' },
-                borderRadius: '50%',
-                width: 50,
-                height: 50
-              }}
-            >
-              <PhoneIcon />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title={`Envoyer un message à ${contact.name}`}>
-            <IconButton 
-              onClick={() => handleContact('chat')}
-              sx={{ 
-                backgroundColor: '#25D366',
-                color: 'white',
-                '&:hover': { backgroundColor: '#20bd5a' },
-                borderRadius: '50%',
-                width: 50,
-                height: 50
-              }}
-            >
-              <ChatIcon />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
-        <Chip 
-          label="Historique de présence" 
-          sx={{ 
-            backgroundColor: buttonColor, 
-            color: 'white',
-            fontWeight: 'bold'
-          }} 
-        />
-      </Box>
-
-      <DialogContent>
-        {loading ? (
-          <LoadingSpinner />
-        ) : history.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <HistoryIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
-            <Typography variant="body1" color="textSecondary">
-              Aucun historique de présence pour ce membre.
-            </Typography>
-          </Box>
-        ) : (
-          <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-            <Stack spacing={1}>
-              {history.map((entry, idx) => (
-                <Box
-                  key={idx}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    borderRadius: 3,
-                    backgroundColor: idx % 2 === 0 ? '#f8f9fa' : '#fff',
-                    border: '1px solid #e9ecef',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      backgroundColor: '#e3f2fd',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-                    }
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        backgroundColor: entry.present ? '#4CAF50' : '#f44336'
-                      }}
-                    />
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                      {new Date(entry.date).toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {entry.present ? (
-                      <>
-                        <CheckIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
-                        <Typography variant="body1" sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                          Présent à {entry.time || '--:--'}
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <CloseIcon sx={{ color: '#f44336', fontSize: 20 }} />
-                        <Typography variant="body1" sx={{ color: '#f44336', fontWeight: 'bold' }}>
-                          Absent
-                        </Typography>
-                      </>
-                    )}
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-          </Box>
-        )}
-      </DialogContent>
-
-      <DialogActions sx={{ justifyContent: 'center', mt: 2, pb: 3 }}>
-        <Button
-          onClick={onClose}
-          sx={{
-            backgroundColor: buttonColor,
-            color: 'white',
+    <>
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{ 
+          sx: {
             borderRadius: 3,
-            px: 4,
-            py: 1.2,
-            fontWeight: 'bold',
-            fontSize: 14,
-            '&:hover': { backgroundColor: buttonColor, opacity: 0.9 },
-          }}
-        >
-          Fermer
-        </Button>
-      </DialogActions>
-    </Dialog>
+          }
+        }}
+      >
+        {/* En-tête amélioré */}
+        <DialogTitle sx={{ 
+          textAlign: 'center', 
+          backgroundColor: buttonColor,
+          color: 'white',
+          py: 3
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
+            <SafeAvatar
+              src={contact.image || contact.imageUrl}
+              alt={contact.name}
+              sx={{ 
+                width: 80, 
+                height: 80, 
+                border: '3px solid white',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+            />
+          </Box>
+
+          <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
+            {contact.name}
+          </Typography>
+          
+          <Typography variant="body1" sx={{ opacity: 0.9, mb: 2 }}>
+            {contact.position}
+          </Typography>
+
+          {/* Boutons de contact améliorés */}
+          <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 1 }}>
+            <Tooltip title={`Appeler ${contact.number || ''}`}>
+              <IconButton 
+                onClick={() => handleContact('call')}
+                sx={{ 
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  '&:hover': { backgroundColor: '#45a049' },
+                  borderRadius: '50%',
+                  width: 50,
+                  height: 50
+                }}
+              >
+                <PhoneIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Visioconférence">
+              <IconButton 
+                onClick={() => handleContact('video')}
+                sx={{ 
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  '&:hover': { backgroundColor: '#1976D2' },
+                  borderRadius: '50%',
+                  width: 50,
+                  height: 50
+                }}
+              >
+                <VideocamIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title={`Envoyer un message à ${contact.name}`}>
+              <IconButton 
+                onClick={() => handleContact('chat')}
+                sx={{ 
+                  backgroundColor: '#FF9800',
+                  color: 'white',
+                  '&:hover': { backgroundColor: '#F57C00' },
+                  borderRadius: '50%',
+                  width: 50,
+                  height: 50
+                }}
+              >
+                <ChatIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent sx={{ mt: 2 }}>
+          <Box sx={{ textAlign: 'center', mb: 3 }}>
+            <Chip 
+              label="Historique de présence" 
+              sx={{ 
+                backgroundColor: buttonColor, 
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                py: 1
+              }} 
+            />
+          </Box>
+
+          {loading ? (
+            <LoadingSpinner />
+          ) : history.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <HistoryIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
+              <Typography variant="body1" color="textSecondary">
+                Aucun historique de présence pour ce membre.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+              <Stack spacing={1}>
+                {history.map((entry, idx) => (
+                  <Card
+                    key={idx}
+                    sx={{
+                      borderRadius: 2,
+                      backgroundColor: idx % 2 === 0 ? '#f8f9fa' : '#fff',
+                      border: '1px solid #e9ecef',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        backgroundColor: '#e3f2fd',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box
+                            sx={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              backgroundColor: entry.present ? '#4CAF50' : '#f44336'
+                            }}
+                          />
+                          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                            {new Date(entry.date).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {entry.present ? (
+                            <>
+                              <CheckIcon sx={{ color: '#4CAF50', fontSize: 20 }} />
+                              <Typography variant="body1" sx={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                                Présent à {entry.time || '--:--'}
+                              </Typography>
+                            </>
+                          ) : (
+                            <>
+                              <CloseIcon sx={{ color: '#f44336', fontSize: 20 }} />
+                              <Typography variant="body1" sx={{ color: '#f44336', fontWeight: 'bold' }}>
+                                Absent
+                              </Typography>
+                            </>
+                          )}
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ justifyContent: 'center', mt: 2, pb: 3 }}>
+          <Button
+            onClick={onClose}
+            sx={{
+              backgroundColor: buttonColor,
+              color: 'white',
+              borderRadius: 2,
+              px: 4,
+              py: 1.2,
+              fontWeight: 'bold',
+              fontSize: 14,
+              '&:hover': { 
+                backgroundColor: buttonColor,
+                boxShadow: `0 4px 12px ${buttonColor}40`
+              },
+            }}
+          >
+            Fermer
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modals enfants */}
+      <ChatModal 
+        open={chatModalOpen} 
+        onClose={() => setChatModalOpen(false)} 
+        contact={contact} 
+      />
+      <VideoCallModal 
+        open={videoCallModalOpen} 
+        onClose={() => setVideoCallModalOpen(false)} 
+        contact={contact} 
+      />
+    </>
   );
 };
 
-// Modal pour scanner les QR codes
+// Modal pour scanner les QR codes (design amélioré)
 const QrScannerModal = ({ open, onClose, onScanSuccess, showSnackbar }) => {
   const qrCodeRegionId = "html5qr-code-full-region";
   const html5QrCodeRef = React.useRef(null);
   const isScanningRef = React.useRef(false);
+  const { buttonColor } = useContext(CustomizationContext);
 
   useEffect(() => {
     if (!open) return;
@@ -1099,13 +2278,52 @@ const QrScannerModal = ({ open, onClose, onScanSuccess, showSnackbar }) => {
   }, [open, onClose, onScanSuccess, showSnackbar]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Scanner QR Code</DialogTitle>
-      <DialogContent>
-        <div id={qrCodeRegionId} style={{ width: "100%", height: 400 }}></div>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        textAlign: 'center', 
+        backgroundColor: buttonColor,
+        color: 'white',
+        py: 3
+      }}>
+        Scanner QR Code
+      </DialogTitle>
+      <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+        <Typography variant="body1" sx={{ mb: 2, color: 'text.secondary' }}>
+          Pointez la caméra vers un QR code pour scanner
+        </Typography>
+        <div id={qrCodeRegionId} style={{ 
+          width: "100%", 
+          height: 400, 
+          borderRadius: 8,
+          overflow: 'hidden'
+        }}></div>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Fermer</Button>
+      <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+        <Button 
+          onClick={onClose}
+          sx={{
+            backgroundColor: buttonColor,
+            color: 'white',
+            borderRadius: 2,
+            px: 4,
+            '&:hover': { 
+              backgroundColor: buttonColor,
+              boxShadow: `0 4px 12px ${buttonColor}40`
+            }
+          }}
+        >
+          Fermer
+        </Button>
       </DialogActions>
     </Dialog>
   );
@@ -1118,7 +2336,6 @@ const searchInContacts = (contacts, searchTerm) => {
   const searchLower = searchTerm.toLowerCase().trim();
   
   return contacts.filter(contact => {
-    // Recherche dans tous les champs de base
     const basicFields = [
       contact.name,
       contact.position,
@@ -1134,12 +2351,10 @@ const searchInContacts = (contacts, searchTerm) => {
       contact.nationality
     ];
 
-    // Vérification des champs de base
     if (basicFields.some(field => field && field.toString().toLowerCase().includes(searchLower))) {
       return true;
     }
 
-    // Recherche dans les dates formatées
     const dateFields = [
       formatDateForDisplay(contact.contractStart),
       formatDateForDisplay(contact.contractEnd),
@@ -1151,13 +2366,11 @@ const searchInContacts = (contacts, searchTerm) => {
       return true;
     }
 
-    // Recherche dans le salaire formaté
     const salaryFormatted = formatSalary(contact.salary);
     if (salaryFormatted && salaryFormatted.toLowerCase().includes(searchLower)) {
       return true;
     }
 
-    // Recherche dans le statut de présence
     const status = contact.presentToday ? "présent" : "absent";
     if (status.includes(searchLower)) {
       return true;
@@ -1205,12 +2418,27 @@ const Dashboard = () => {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [notificationsAnchor, setNotificationsAnchor] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  
+  // États pour les modals
+  const [isChatModalOpen, setChatModalOpen] = useState(false);
+  const [isVideoCallModalOpen, setVideoCallModalOpen] = useState(false);
+  const [selectedChatContact, setSelectedChatContact] = useState(null);
+  const [isTodoListModalOpen, setTodoListModalOpen] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
-  // Fonction pour afficher les snackbars
   const showSnackbar = (message, severity = 'info') => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const handleOpenChat = (contact) => {
+    setSelectedChatContact(contact);
+    setChatModalOpen(true);
+  };
+
+  const handleOpenVideoCall = (contact) => {
+    setSelectedChatContact(contact);
+    setVideoCallModalOpen(true);
   };
 
   // Récupérer le profil admin
@@ -1257,11 +2485,10 @@ const Dashboard = () => {
     return contacts.find(c => c._id === id) || null;
   };
 
-  // Chargement initial des contacts avec rechargement périodique
+  // Chargement initial des contacts
   useEffect(() => {
     fetchContactsAndPresences();
     
-    // Recharger les données toutes les 5 minutes pour rafraîchir les images
     const interval = setInterval(() => {
       fetchContactsAndPresences();
     }, 5 * 60 * 1000);
@@ -1286,7 +2513,6 @@ const Dashboard = () => {
       
       let contactsData = contactsRes.data || [];
 
-      // FILTRE : Exclure l'utilisateur admin courant du tableau
       const currentUserEmail = localStorage.getItem('email');
       contactsData = contactsData.filter(user => user.email !== currentUserEmail);
 
@@ -1304,10 +2530,9 @@ const Dashboard = () => {
           p.user?._id === user._id
         );
         
-        // S'assurer que l'URL de l'image est permanente
         const imageUrl = getImageUrl(user.image);
         const permanentImageUrl = imageUrl && imageUrl.startsWith('blob:') 
-          ? null // Éviter les URLs blob temporaires
+          ? null
           : imageUrl;
         
         return {
@@ -1319,7 +2544,7 @@ const Dashboard = () => {
             time: presence.time || '--:--' 
           }] : [],
           image: permanentImageUrl,
-          imageUrl: permanentImageUrl, // Utiliser la même URL permanente
+          imageUrl: permanentImageUrl,
           workLocation: user.workLocation || '',
           contractStart: user.contractStart || '',
           contractEnd: user.contractEnd || '',
@@ -1345,7 +2570,6 @@ const Dashboard = () => {
       const stored = localStorage.getItem('contacts');
       if (stored) {
         let storedContacts = JSON.parse(stored);
-        // Appliquer le même filtre admin sur les données stockées
         const currentUserEmail = localStorage.getItem('email');
         storedContacts = storedContacts.filter(user => user.email !== currentUserEmail);
         setContacts(storedContacts);
@@ -1544,12 +2768,10 @@ const Dashboard = () => {
 
   let displayContacts = (filterQG === "Tous" ? contacts : contacts.filter((c) => c.qg === filterQG));
 
-  // Appliquer la recherche améliorée
   if (searchTerm.trim()) {
     displayContacts = searchInContacts(displayContacts, searchTerm);
   }
 
-  // Appliquer les filtres actifs
   if (activeFilter && activeFilter !== "Tous") {
     displayContacts = displayContacts.filter((c) => {
       if (activeFilter === "Présents") return c.presentToday === true;
@@ -1560,7 +2782,6 @@ const Dashboard = () => {
     });
   }
 
-  // Mettre à jour le statut présent/absent pour l'affichage
   displayContacts = displayContacts.map((c) => {
     const todayEntry = c.history?.find((h) => h.date === today);
     return { ...c, presentToday: todayEntry ? todayEntry.present : false };
@@ -1603,7 +2824,7 @@ const Dashboard = () => {
             <div style={{ display: "flex", alignItems: "center", flex: 1, backgroundColor: "#f5f5f5", borderRadius: borderRadiusGlobal, padding: "4px 10px", margin: '0 20px', minWidth: 0 }}>
               <SearchIcon style={{ color: "#555", marginRight: 6 }} />
               <TextField
-                placeholder=""
+                placeholder="Rechercher un contact..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 variant="standard"
@@ -1612,9 +2833,25 @@ const Dashboard = () => {
               />
             </div>
 
-            {/* Boutons d'action - AVEC PREVENTION DU COMPORTEMENT PAR DEFAUT */}
+            {/* Boutons d'action */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* Bouton de notifications avec Menu déroulant */}
+              <Tooltip title="Ma Todo List">
+                <IconButton 
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setTodoListModalOpen(true);
+                  }}
+                  sx={{ 
+                    border: `2px solid ${buttonColor}`, 
+                    color: buttonColor, 
+                    "&:hover": { backgroundColor: `${buttonColor}15` }
+                  }}
+                >
+                  <TaskIcon />
+                </IconButton>
+              </Tooltip>
+
               <Tooltip title="Notifications">
                 <IconButton 
                   onClick={(event) => {
@@ -1644,7 +2881,6 @@ const Dashboard = () => {
                 </IconButton>
               </Tooltip>
 
-              {/* Bouton Ajouter - AVEC PREVENTION */}
               <Tooltip title="Ajouter un utilisateur">
                 <IconButton
                   onClick={(event) => { 
@@ -1663,7 +2899,6 @@ const Dashboard = () => {
                 </IconButton>
               </Tooltip>
 
-              {/* Bouton Scanner - AVEC PREVENTION */}
               <Tooltip title="Scanner QR Code">
                 <IconButton
                   onClick={(event) => {
@@ -1681,7 +2916,6 @@ const Dashboard = () => {
                 </IconButton>
               </Tooltip>
 
-              {/* Bouton PDF - AVEC PREVENTION */}
               <Tooltip title="Exporter QR Entreprise (PDF)">
                 <IconButton 
                   onClick={(event) => {
@@ -1702,7 +2936,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Filtres rapides - AVEC PREVENTION */}
+          {/* Filtres rapides */}
           <div style={{ display: "flex", gap: 8, marginTop: 5, marginLeft: '20px' }}>
             {["Tous", "Présents", "Absents"].map((filter) => (
               <Chip
@@ -1780,7 +3014,6 @@ const Dashboard = () => {
                     }
                   }}
                   onClick={() => {
-                    // Marquer comme lu
                     const updatedNotifications = notifications.map(n => 
                       n.id === notification.id ? { ...n, read: true } : n
                     );
@@ -1822,7 +3055,6 @@ const Dashboard = () => {
                 fullWidth
                 size="small"
                 onClick={() => {
-                  // Marquer toutes les notifications comme lues
                   const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
                   setNotifications(updatedNotifications);
                   setNotificationsAnchor(null);
@@ -1860,7 +3092,7 @@ const Dashboard = () => {
             boxShadow: `2px 0 ${boxShadow}px rgba(0,0,0,0.1)`,
           }}
         >
-          {/* Logo - AVEC PREVENTION */}
+          {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, marginBottom: 20 }}>
             {customLogo && (
               <img
@@ -1883,7 +3115,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          {/* Liste des QG - AVEC PREVENTION */}
+          {/* Liste des QG */}
           <ul style={{ listStyle: 'none', padding: 0, marginTop: 10, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
             {qgList.map((qg) => {
               const count = qg === "Tous" ? contacts.length : contacts.filter((c) => String(c.qg).trim() === String(qg).trim()).length;
@@ -1951,7 +3183,6 @@ const Dashboard = () => {
                   }
                 }}
               >
-                {/* Avatar Admin */}
                 <Box sx={{ position: 'relative' }}>
                   <SafeAvatar
                     src={adminProfile?.image}
@@ -1962,7 +3193,6 @@ const Dashboard = () => {
                       backgroundColor: 'rgba(255,255,255,0.2)'
                     }}
                   />
-                  {/* Indicateur de statut en ligne */}
                   <Box
                     sx={{
                       position: 'absolute',
@@ -2023,7 +3253,7 @@ const Dashboard = () => {
           </ul>
         </aside>
 
-        {/* Dialog de confirmation de déconnexion - AVEC PERSONNALISATION */}
+        {/* Dialog de confirmation de déconnexion */}
         <Dialog
           open={isLogoutDialogOpen}
           onClose={() => setIsLogoutDialogOpen(false)}
@@ -2111,7 +3341,7 @@ const Dashboard = () => {
         }}>
           <br/><br/>
 
-          {/* Bouton filtre colonnes - AVEC PREVENTION */}
+          {/* Bouton filtre colonnes */}
           <Stack direction="row" justifyContent="flex-end" sx={{ position: "sticky", top: 10, zIndex: 10, mb: 2 }}>
             <IconButton 
               onClick={(event) => {
@@ -2330,6 +3560,40 @@ const Dashboard = () => {
                                     </IconButton>
                                   </Tooltip>
 
+                                  <Tooltip title="Ouvrir le chat">
+                                    <IconButton 
+                                      onClick={(event) => { 
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        handleOpenChat(contact);
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: buttonColor, 
+                                        '&:hover': { backgroundColor: `${buttonColor}15` } 
+                                      }}
+                                    >
+                                      <ChatIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
+                                  <Tooltip title="Visioconférence">
+                                    <IconButton 
+                                      onClick={(event) => { 
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        handleOpenVideoCall(contact);
+                                      }} 
+                                      size="small" 
+                                      sx={{ 
+                                        color: '#2196F3', 
+                                        '&:hover': { backgroundColor: '#E3F2FD' } 
+                                      }}
+                                    >
+                                      <VideocamIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+
                                   <Tooltip title="Exporter PDF">
                                     <IconButton 
                                       onClick={(event) => {
@@ -2436,6 +3700,25 @@ const Dashboard = () => {
         onClose={() => setScannerOpen(false)} 
         onScanSuccess={handleScanSuccess}
         showSnackbar={showSnackbar}
+      />
+      
+      {/* Modals de communication */}
+      <ChatModal 
+        open={isChatModalOpen} 
+        onClose={() => setChatModalOpen(false)} 
+        contact={selectedChatContact} 
+      />
+      <VideoCallModal 
+        open={isVideoCallModalOpen} 
+        onClose={() => setVideoCallModalOpen(false)} 
+        contact={selectedChatContact} 
+      />
+
+      {/* Modal Todo List */}
+      <TodoListModal 
+        open={isTodoListModalOpen} 
+        onClose={() => setTodoListModalOpen(false)} 
+        contacts={contacts}
       />
     </>
   );
