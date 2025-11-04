@@ -76,6 +76,13 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import EventIcon from '@mui/icons-material/Event';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
+import WorkIcon from '@mui/icons-material/Work';
+import EmailIcon from '@mui/icons-material/Email';
+import BusinessIcon from '@mui/icons-material/Business';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import DescriptionIcon from '@mui/icons-material/Description';
+import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
+import PublicIcon from '@mui/icons-material/Public';
 import { FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa';
 import { HiOutlineUserCircle } from 'react-icons/hi';
 import { QRCodeSVG } from 'qrcode.react';
@@ -2329,32 +2336,40 @@ const QrScannerModal = ({ open, onClose, onScanSuccess, showSnackbar }) => {
   );
 };
 
-// Fonction de recherche améliorée
+// Fonction de recherche améliorée avec catégorisation
 const searchInContacts = (contacts, searchTerm) => {
   if (!searchTerm.trim()) return contacts;
 
   const searchLower = searchTerm.toLowerCase().trim();
   
-  return contacts.filter(contact => {
-    const basicFields = [
-      contact.name,
-      contact.position,
-      contact.number,
-      contact.qg,
-      contact.email,
-      contact.workLocation,
-      contact.contractType,
-      contact.activity,
-      contact.activityBy,
-      contact.mentor,
-      contact.manager,
-      contact.nationality
+  // Catégoriser les résultats par pertinence
+  const exactMatches = [];
+  const partialMatches = [];
+  
+  contacts.forEach(contact => {
+    let matchScore = 0;
+    
+    // Recherche exacte (score élevé)
+    if (contact.name?.toLowerCase().includes(searchLower)) matchScore += 10;
+    if (contact.email?.toLowerCase().includes(searchLower)) matchScore += 8;
+    if (contact.position?.toLowerCase().includes(searchLower)) matchScore += 6;
+    
+    // Recherche partielle (score moyen)
+    if (contact.qg?.toLowerCase().includes(searchLower)) matchScore += 4;
+    if (contact.workLocation?.toLowerCase().includes(searchLower)) matchScore += 3;
+    if (contact.contractType?.toLowerCase().includes(searchLower)) matchScore += 3;
+    
+    // Autres champs (score faible)
+    const otherFields = [
+      contact.number, contact.activity, contact.activityBy,
+      contact.mentor, contact.manager, contact.nationality
     ];
+    
+    otherFields.forEach(field => {
+      if (field?.toLowerCase().includes(searchLower)) matchScore += 1;
+    });
 
-    if (basicFields.some(field => field && field.toString().toLowerCase().includes(searchLower))) {
-      return true;
-    }
-
+    // Dates formatées
     const dateFields = [
       formatDateForDisplay(contact.contractStart),
       formatDateForDisplay(contact.contractEnd),
@@ -2362,22 +2377,33 @@ const searchInContacts = (contacts, searchTerm) => {
       formatDateForDisplay(contact.birthday)
     ];
 
-    if (dateFields.some(date => date && date.toLowerCase().includes(searchLower))) {
-      return true;
-    }
+    dateFields.forEach(date => {
+      if (date?.toLowerCase().includes(searchLower)) matchScore += 2;
+    });
 
+    // Salaire formaté
     const salaryFormatted = formatSalary(contact.salary);
-    if (salaryFormatted && salaryFormatted.toLowerCase().includes(searchLower)) {
-      return true;
-    }
+    if (salaryFormatted?.toLowerCase().includes(searchLower)) matchScore += 2;
 
+    // Statut de présence
     const status = contact.presentToday ? "présent" : "absent";
-    if (status.includes(searchLower)) {
-      return true;
-    }
+    if (status.includes(searchLower)) matchScore += 2;
 
-    return false;
+    if (matchScore > 0) {
+      const contactWithScore = { ...contact, _matchScore: matchScore };
+      if (matchScore >= 5) {
+        exactMatches.push(contactWithScore);
+      } else {
+        partialMatches.push(contactWithScore);
+      }
+    }
   });
+
+  // Trier par score de pertinence
+  exactMatches.sort((a, b) => b._matchScore - a._matchScore);
+  partialMatches.sort((a, b) => b._matchScore - a._matchScore);
+
+  return [...exactMatches, ...partialMatches];
 };
 
 // Composant principal Dashboard
@@ -2517,6 +2543,78 @@ const Dashboard = () => {
   const handleSearchSubmit = () => {
     // La recherche est déjà gérée par le filtrage des contacts via searchTerm
     setShowSuggestions(false);
+  };
+
+  // Fonction pour obtenir l'icône de suggestion
+  const getSuggestionIcon = (suggestionText) => {
+    const text = suggestionText.toLowerCase();
+    
+    // Noms de personnes
+    if (contacts.some(contact => contact.name?.toLowerCase() === text)) {
+      return <HiOutlineUserCircle style={{ fontSize: 16, color: buttonColor }} />;
+    }
+    
+    // Positions/Postes
+    if (contacts.some(contact => contact.position?.toLowerCase() === text)) {
+      return <WorkIcon style={{ fontSize: 16, color: "#2196F3" }} />;
+    }
+    
+    // Emails
+    if (contacts.some(contact => contact.email?.toLowerCase() === text) || text.includes('@')) {
+      return <EmailIcon style={{ fontSize: 16, color: "#FF9800" }} />;
+    }
+    
+    // Départements/QG
+    if (contacts.some(contact => contact.qg?.toLowerCase() === text)) {
+      return <BusinessIcon style={{ fontSize: 16, color: "#4CAF50" }} />;
+    }
+    
+    // Lieux de travail
+    if (contacts.some(contact => contact.workLocation?.toLowerCase() === text)) {
+      return <LocationOnIcon style={{ fontSize: 16, color: "#F44336" }} />;
+    }
+    
+    // Types de contrat
+    if (CONTRACT_TYPES.some(contract => contract.label.toLowerCase() === text)) {
+      return <DescriptionIcon style={{ fontSize: 16, color: "#9C27B0" }} />;
+    }
+    
+    // Activités
+    if (contacts.some(contact => contact.activity?.toLowerCase() === text)) {
+      return <TaskIcon style={{ fontSize: 16, color: "#009688" }} />;
+    }
+    
+    // Managers/Mentors
+    if (contacts.some(contact => contact.manager?.toLowerCase() === text) || 
+        contacts.some(contact => contact.mentor?.toLowerCase() === text)) {
+      return <SupervisorAccountIcon style={{ fontSize: 16, color: "#795548" }} />;
+    }
+    
+    // Nationalités
+    if (contacts.some(contact => contact.nationality?.toLowerCase() === text)) {
+      return <PublicIcon style={{ fontSize: 16, color: "#3F51B5" }} />;
+    }
+    
+    // Par défaut
+    return <SearchIcon style={{ fontSize: 16, color: "#8a8a8a" }} />;
+  };
+
+  // Obtenir le type de suggestion pour le sous-titre
+  const getSuggestionType = (suggestionText) => {
+    const text = suggestionText.toLowerCase();
+    
+    if (contacts.some(contact => contact.name?.toLowerCase() === text)) return "Nom";
+    if (contacts.some(contact => contact.position?.toLowerCase() === text)) return "Poste";
+    if (contacts.some(contact => contact.email?.toLowerCase() === text) || text.includes('@')) return "Email";
+    if (contacts.some(contact => contact.qg?.toLowerCase() === text)) return "Département";
+    if (contacts.some(contact => contact.workLocation?.toLowerCase() === text)) return "Lieu de travail";
+    if (CONTRACT_TYPES.some(contract => contract.label.toLowerCase() === text)) return "Type de contrat";
+    if (contacts.some(contact => contact.activity?.toLowerCase() === text)) return "Activité";
+    if (contacts.some(contact => contact.manager?.toLowerCase() === text)) return "Manager";
+    if (contacts.some(contact => contact.mentor?.toLowerCase() === text)) return "Mentor";
+    if (contacts.some(contact => contact.nationality?.toLowerCase() === text)) return "Nationalité";
+    
+    return "Recherche";
   };
 
   const handleOpenChat = (contact) => {
@@ -3006,7 +3104,7 @@ const handleScanSuccess = async (decodedText) => {
                 </IconButton>
               )}
 
-              {/* Suggestions dropdown */}
+              {/* Suggestions dropdown avec icônes */}
               {showSuggestions && suggestions.length > 0 && (
                 <div style={{
                   position: "absolute",
@@ -3027,15 +3125,15 @@ const handleScanSuccess = async (decodedText) => {
                       key={index}
                       onClick={() => handleSuggestionClick(suggestion)}
                       style={{
-                        padding: "10px 16px",
+                        padding: "12px 16px",
                         cursor: "pointer",
                         borderBottom: "1px solid #f5f5f5",
                         fontSize: "14px",
                         color: "#333",
                         transition: "background-color 0.2s ease",
                         display: "flex",
-                        alignItems: "center",
-                        gap: "8px"
+                        alignItems: "flex-start",
+                        gap: "12px"
                       }}
                       onMouseEnter={(e) => {
                         e.target.style.backgroundColor = "#f8f9fa";
@@ -3044,8 +3142,38 @@ const handleScanSuccess = async (decodedText) => {
                         e.target.style.backgroundColor = "white";
                       }}
                     >
-                      <SearchIcon style={{ fontSize: 16, color: "#8a8a8a" }} />
-                      {suggestion}
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        backgroundColor: '#f5f5f5'
+                      }}>
+                        {getSuggestionIcon(suggestion)}
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontWeight: 500,
+                            lineHeight: 1.2,
+                            mb: 0.5
+                          }}
+                        >
+                          {suggestion}
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            color: "#666",
+                            fontSize: "0.75rem"
+                          }}
+                        >
+                          {getSuggestionType(suggestion)}
+                        </Typography>
+                      </Box>
                     </div>
                   ))}
                 </div>
@@ -3856,8 +3984,8 @@ const handleScanSuccess = async (decodedText) => {
                                       }} 
                                       size="small" 
                                       sx={{ 
-                                        color: '#2196F3', 
-                                        '&:hover': { backgroundColor: '#E3F2FD' } 
+                                         color: buttonColor,                                       
+                                        '&:hover': { backgroundColor: `${buttonColor}15` } 
                                       }}
                                     >
                                       <VideocamIcon fontSize="small" />
