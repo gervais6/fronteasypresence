@@ -3204,28 +3204,63 @@ const handleScanSuccess = async (decodedText) => {
 
             {/* Boutons d'action */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Tooltip title="Ma Todo List">
+           
+
+            
+
+            <Tooltip title="Ajouter un utilisateur">
+  <Button
+    variant="contained"
+    onClick={(event) => { 
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedContact(null); 
+      setNewEntryModalOpen(true); 
+    }}
+    sx={{ 
+      backgroundColor: buttonColor,
+      color: 'white',
+      "&:hover": { 
+        backgroundColor: `${buttonColor}DD`,
+      },
+      borderRadius: '8px',
+      textTransform: 'none',
+      fontWeight: 600,
+      px: 1.5,
+      py: 0.5,
+      minWidth: 'auto',
+      fontSize: '0.875rem'
+    }}
+  >
+    <AddIcon sx={{ fontSize: '1.2rem', mr: '0.5' }} />
+    Nouveau 
+  </Button>
+</Tooltip>
+
+            
+
+              <Tooltip title="Exporter QR Entreprise (PDF)">
                 <IconButton 
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    setTodoListModalOpen(true);
+                    exportCompanyQrToPdf();
                   }}
                   sx={{ 
-                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
                     backgroundColor: 'white',
+                    fontSize: 12,
                     "&:hover": { 
                       backgroundColor: `${buttonColor}08`,
-                      border: `1px solid ${buttonColor}`
                     }
                   }}
                 >
-                  <TaskIcon />
+                  <PictureAsPdfIcon />
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Notifications">
+
+                <Tooltip title="Notifications">
                 <IconButton 
                   onClick={(event) => {
                     event.preventDefault();
@@ -3233,12 +3268,10 @@ const handleScanSuccess = async (decodedText) => {
                     setNotificationsAnchor(event.currentTarget);
                   }}
                   sx={{ 
-                    border: `1px solid ${buttonColor}`, 
                     color: buttonColor, 
                     backgroundColor: 'white',
                     "&:hover": { 
                       backgroundColor: `${buttonColor}08`,
-                      border: `1px solid ${buttonColor}`
                     }
                   }}
                 >
@@ -3258,70 +3291,6 @@ const handleScanSuccess = async (decodedText) => {
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Ajouter un utilisateur">
-                <IconButton
-                  onClick={(event) => { 
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setSelectedContact(null); 
-                    setNewEntryModalOpen(true); 
-                  }}
-                  sx={{ 
-                    border: `1px solid ${buttonColor}`, 
-                    color: buttonColor, 
-                    backgroundColor: 'white',
-                    "&:hover": { 
-                      backgroundColor: `${buttonColor}08`,
-                      border: `1px solid ${buttonColor}`
-                    }
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Scanner QR Code">
-                <IconButton
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setScannerOpen(true);
-                  }}
-                  sx={{ 
-                    border: `1px solid ${buttonColor}`, 
-                    color: buttonColor, 
-                    backgroundColor: 'white',
-                    "&:hover": { 
-                      backgroundColor: `${buttonColor}08`,
-                      border: `1px solid ${buttonColor}`
-                    }
-                  }}
-                >
-                  <QrCodeScannerIcon />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Exporter QR Entreprise (PDF)">
-                <IconButton 
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    exportCompanyQrToPdf();
-                  }}
-                  sx={{ 
-                    border: `1px solid ${buttonColor}`, 
-                    color: buttonColor, 
-                    backgroundColor: 'white',
-                    fontSize: 12,
-                    "&:hover": { 
-                      backgroundColor: `${buttonColor}08`,
-                      border: `1px solid ${buttonColor}`
-                    }
-                  }}
-                >
-                  <PictureAsPdfIcon />
-                </IconButton>
-              </Tooltip>
             </div>
           </div>
 
