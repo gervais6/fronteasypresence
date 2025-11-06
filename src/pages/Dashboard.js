@@ -3209,7 +3209,7 @@ const handleScanSuccess = async (decodedText) => {
             
 
             <Tooltip title="Ajouter un utilisateur">
-  <Button
+  <Butto n
     variant="contained"
     onClick={(event) => { 
       event.preventDefault();
