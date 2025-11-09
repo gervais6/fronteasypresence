@@ -1,233 +1,132 @@
-import React, { useState, useContext } from 'react';
-import {
-  TextField,
-  Button,
-  Box,
-  Typography,
-  Avatar,
-  Card,
-  CardContent,
-  Grid,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Snackbar,
-  Alert
-} from '@mui/material';
-import { CustomizationContext } from './CustomizationContext';
-
-// Composant Avatar sécurisé
-const SafeAvatar = ({ src, alt, ...props }) => {
-  const [imgError, setImgError] = useState(false);
-  
-  const handleError = () => {
-    setImgError(true);
-  };
-
-  if (!src || imgError) {
-    return (
-      <Avatar {...props} sx={{ backgroundColor: '#e0e0e0', ...props.sx }}>
-        {alt?.charAt(0)?.toUpperCase() || 'U'}
-      </Avatar>
-    );
-  }
-
-  return (
-    <Avatar {...props} src={src} alt={alt} onError={handleError} />
-  );
-};
-
+import React, { useState, useEffect } from "react";
+import { TextField, Button, IconButton, InputAdornment, Skeleton } from '@mui/material';
+import './Dashboard.css';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaAngleDoubleLeft, FaAngleDoubleRight } from "react-icons/fa";
+import SearchIcon from '@mui/icons-material/Search';
+import { IoNotificationsOutline } from "react-icons/io5";
+import { HiOutlineUserCircle } from "react-icons/hi";
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import SaveIcon from '@mui/icons-material/Save';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUserPlus } from '@fortawesome/free-solid-svg-icons';
+import { faUserEdit } from '@fortawesome/free-solid-svg-icons';
 const Formulaire = () => {
-  const { buttonColor } = useContext(CustomizationContext);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    position: '',
-    number: '',
-    qg: '',
-    presentToday: true,
-    image: null
-  });
+    const [isSidebarOpen, setSidebarOpen] = useState(true);
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
 
-  const showSnackbar = (message, severity = 'info') => {
-    setSnackbar({ open: true, message, severity });
-  };
+    const toggleSidebar = () => {
+        setSidebarOpen(prevState => !prevState);
+    };
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            console.log("Fichier sélectionné :", file.name);
+        }
+    };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      // Récupérer les contacts existants
-      const existingContacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-      
-      const newContact = {
-        _id: `user_${Date.now()}`,
-        ...formData
-      };
+    const handleSidebarToggleClick = () => {
+        navigate('/dashboard');
+    };
 
-      // Ajouter le nouveau contact
-      const updatedContacts = [...existingContacts, newContact];
-      localStorage.setItem('contacts', JSON.stringify(updatedContacts));
-      
-      showSnackbar('Contact ajouté avec succès !', 'success');
-      
-      // Réinitialiser le formulaire
-      setFormData({
-        name: '',
-        email: '',
-        position: '',
-        number: '',
-        qg: '',
-        presentToday: true,
-        image: null
-      });
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout du contact:', error);
-      showSnackbar('Erreur lors de l\'ajout du contact', 'error');
-    }
-  };
+    // Simulate loading data
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setLoading(false);
+        }, 2000);
 
-  return (
-    <Box sx={{ maxWidth: 800, margin: '0 auto', padding: 3 }}>
-      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-        <CardContent sx={{ padding: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 4 }}>
-            Ajouter un Contact
-          </Typography>
+        return () => clearTimeout(timer);
+    }, []);
 
-          <form onSubmit={handleSubmit}>
-            <Grid container spacing={3}>
-              {/* Photo de profil */}
-              <Grid item xs={12} sx={{ textAlign: 'center' }}>
-                <SafeAvatar
-                  src={formData.image}
-                  alt={formData.name}
-                  sx={{ width: 100, height: 100, margin: '0 auto 20px' }}
-                />
-              </Grid>
+    return (
+        <>
+            <header className="navbar navbar-expand-lg navbar-dark" style={{ backgroundColor: "#4A2C2A" }}>
+                <div className="container-fluid">
+                    <a className="navbar-brand p-3 " href="#">Easy Manager</a>
+                    <IconButton className="navbar-toggler" type="button" onClick={handleSidebarToggleClick} aria-label="Toggle sidebar">
+                        {isSidebarOpen ? <FaAngleDoubleLeft style={{ color: "white" }} /> : <FaAngleDoubleRight style={{ color: "white" }} />}
+                    </IconButton>
+                </div>
+            </header>
 
-              {/* Nom */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Nom complet"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  required
-                  variant="outlined"
-                />
-              </Grid>
+            <div className={`wrapper ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+                <main style={{ marginLeft: '0', transition: 'margin-left 0.3s ease', backgroundColor: "#eee", minHeight: "91vh" }}>
+                    <div className='main'>
+                        <div className="container py-5">
+                            <h2 className="mb-4 text-start no-wrap" style={{ color: "#4A2C2A" }}>
+                                {loading ? (
+                                    // Render skeleton for the title while loading
+                                    <Skeleton variant="text" width="40%" height={40} />
+                                ) : (
+                                    <>
+                                        <FontAwesomeIcon icon={faUserEdit} style={{ marginRight: '10px' }} />
+                                      Modifier les informations 
+                                    </>
+                                )}
+                            </h2>
 
-              {/* Email */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  required
-                  variant="outlined"
-                />
-              </Grid>
+                            {loading ? (
+                                // Render skeletons while loading
+                                <div>
+                                    <Skeleton variant="text" width="60%" height={40} style={{ marginBottom: '20px' }} />
+                                    <Skeleton variant="rectangular" height={200} style={{ marginBottom: '20px' }} />
+                                    <Skeleton variant="text" width="80%" height={40} style={{ marginBottom: '20px' }} />
+                                    <Skeleton variant="text" width="80%" height={40} style={{ marginBottom: '20px' }} />
+                                </div>
+                            ) : (
+                                // Render the form when not loading
+                                <form>
+                                    <div className="row mb-4 mt-5">
+                                        <div className="col-md-6">
+                                            <h4 className="text-start" style={{ fontSize: "20px" }}>Informations professionnelles</h4>
+                                            <div className="mb-3">
+                                                <TextField label="Nom complet" variant="outlined" fullWidth />
+                                            </div>
+                                            <div className="mb-3">
+                                                <TextField label="Adresse e-mail" variant="outlined" fullWidth />
+                                            </div>
+                                            <div className="mb-3">
+                                                <TextField label="Numéro de téléphone" variant="outlined" fullWidth />
+                                            </div>
 
-              {/* Poste */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Poste"
-                  value={formData.position}
-                  onChange={(e) => handleInputChange('position', e.target.value)}
-                  variant="outlined"
-                />
-              </Grid>
+                                            <div className="mb-3">
+                                                <TextField label="Eglise (QG)" variant="outlined" fullWidth />
+                                            </div>
 
-              {/* Téléphone */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Numéro de téléphone"
-                  value={formData.number}
-                  onChange={(e) => handleInputChange('number', e.target.value)}
-                  variant="outlined"
-                />
-              </Grid>
+                                            <div className="mb-3">
+                                                <TextField label="Statut" variant="outlined" fullWidth />
+                                            </div>
 
-              {/* QG */}
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="QG"
-                  value={formData.qg}
-                  onChange={(e) => handleInputChange('qg', e.target.value)}
-                  variant="outlined"
-                />
-              </Grid>
+                                        </div>
 
-              {/* Présent aujourd'hui */}
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth variant="outlined">
-                  <InputLabel>Présent aujourd'hui</InputLabel>
-                  <Select
-                    value={formData.presentToday}
-                    onChange={(e) => handleInputChange('presentToday', e.target.value)}
-                    label="Présent aujourd'hui"
-                  >
-                    <MenuItem value={true}>Oui</MenuItem>
-                    <MenuItem value={false}>Non</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
 
-              {/* Bouton de soumission */}
-              <Grid item xs={12}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  sx={{
-                    backgroundColor: buttonColor,
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    '&:hover': {
-                      backgroundColor: buttonColor
-                    }
-                  }}
-                >
-                  Ajouter le Contact
-                </Button>
-              </Grid>
-            </Grid>
-          </form>
-        </CardContent>
-      </Card>
+                                    </div>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
-  );
-};
+                                    <hr />
+
+
+
+                                    <div className="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <Button
+                                            type="submit"
+                                            variant="contained"
+                                            style={{ backgroundColor: "#4A2C2A", color: "white", borderRadius: "5px", display: 'flex', alignItems: 'center' }}
+                                        >
+                                            <SaveIcon style={{ marginRight: '8px' }} />
+                                            Sauvegarder
+                                        </Button>
+                                    </div>
+                                </form>
+                            )}
+                        </div>
+                    </div>
+                    
+                </main>
+            </div>
+        </>
+    );
+}
 
 export default Formulaire;
